@@ -9,11 +9,13 @@ namespace FakeXlsxBenchmark
     [MemoryDiagnoser]
     public class BuilderTest
     {
-        readonly FakeExcelBuilder.Builder _builder;
+        readonly FakeExcelBuilder.BuilderReflection _builderRef;
+        readonly FakeExcelBuilder.BuilderExpressionTree _builderExp;
         List<User>? _users;
         public BuilderTest()
         {
-            _builder = new FakeExcelBuilder.Builder();
+            _builderRef = new FakeExcelBuilder.BuilderReflection();
+            _builderExp = new FakeExcelBuilder.BuilderExpressionTree();
         }
 
         [Params(1000, 100000)]
@@ -58,12 +60,21 @@ namespace FakeXlsxBenchmark
         }
 
         [Benchmark(Baseline = true)]
-        public async Task NormalAsync()
+        public async Task ReflectionAsync()
         {
             if (_users == null)
                 throw new ApplicationException("users is null");
             var fileName = @"test\hellowworld.xlsx";
-            await _builder.RunAsync(fileName, _users);
+            await _builderRef.RunAsync(fileName, _users);
+        }
+
+        [Benchmark]
+        public void ExpressionTree()
+        {
+            if (_users == null)
+                throw new ApplicationException("users is null");
+            var fileName = @"test\hellowworld.xlsx";
+            _builderExp.Run(fileName, _users);
         }
     }
 }
