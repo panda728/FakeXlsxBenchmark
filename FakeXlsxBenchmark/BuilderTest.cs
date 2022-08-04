@@ -17,17 +17,17 @@ namespace FakeXlsxBenchmark
         List<User>? _users;
         public BuilderTest()
         {
-            _builderRef.Compile<User>();
-            _builderExp.Compile<User>();
-            _builderExpOp.Compile<User>();
         }
 
-        [Params(1000)]
+        [Params(1000, 100000)]
         public int N = 1000;
 
         [GlobalSetup]
         public void Setup()
         {
+            //_builderRef.Compile<User>();
+            //_builderExp.Compile<User>();
+            //_builderExpOp.Compile<User>();
 
             Randomizer.Seed = new Random(8675309);
 
