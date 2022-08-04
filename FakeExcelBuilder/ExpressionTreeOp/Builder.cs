@@ -72,7 +72,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
 
         private const int COLUMN_WIDTH_MAX = 100;
         private const int COLUMN_WIDTH_MARGIN = 2;
-        
+
         static readonly ConcurrentDictionary<Type, FormatterHelper[]> _dic = new();
         public async Task RunAsync<T>(string fileName, IEnumerable<T> rows, bool writeTitle = true, bool columnAutoFit = true)
         {
@@ -135,11 +135,9 @@ namespace FakeExcelBuilder.ExpressionTreeOp
 #endif
         }
 
-        public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, Stream fsString, bool writeTitle, bool autoFitColumns)
-        {
-            using var writer = new ArrayPoolBufferWriter(1024);
-            ColumnFormatter.SharedStringsClear();
-            var formatters = _dic.GetOrAdd(typeof(T),
+        public void Compile<T>() => _ = ParseFormatters<T>();
+        private static FormatterHelper[] ParseFormatters<T>()
+            => _dic.GetOrAdd(typeof(T),
                 typeof(T)
                     .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                     .Select(x => new FormatterHelper()
@@ -148,7 +146,13 @@ namespace FakeExcelBuilder.ExpressionTreeOp
                         Formatter = PropertyInfoExtensions.GenerateEncodedGetterLambda<T>(x)
                     })
                     .ToArray()
-                ).AsSpan();
+            );
+
+        public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, Stream fsString, bool writeTitle, bool autoFitColumns)
+        {
+            using var writer = new ArrayPoolBufferWriter(1024);
+            ColumnFormatter.SharedStringsClear();
+            var formatters = ParseFormatters<T>().AsSpan();
 
             if (autoFitColumns)
             {

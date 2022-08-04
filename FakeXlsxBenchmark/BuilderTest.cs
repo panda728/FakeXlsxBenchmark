@@ -7,6 +7,7 @@ using static Bogus.DataSets.Name;
 namespace FakeXlsxBenchmark
 {
     [MarkdownExporterAttribute.GitHub]
+    [ShortRunJob]
     [MemoryDiagnoser]
     public class BuilderTest
     {
@@ -16,14 +17,18 @@ namespace FakeXlsxBenchmark
         List<User>? _users;
         public BuilderTest()
         {
+            _builderRef.Compile<User>();
+            _builderExp.Compile<User>();
+            _builderExpOp.Compile<User>();
         }
 
-        [Params(1000, 100000)]
+        [Params(1000)]
         public int N = 1000;
 
         [GlobalSetup]
         public void Setup()
         {
+
             Randomizer.Seed = new Random(8675309);
 
             var fruit = new[] { "apple", "banana", "orange", "strawberry", "kiwi" };
