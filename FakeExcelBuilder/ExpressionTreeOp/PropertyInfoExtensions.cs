@@ -48,26 +48,26 @@ namespace FakeExcelBuilder.ExpressionTreeOp
             var d = Expression.Lambda(call, instanceObj, writer).Compile();
             return (Func<object, IBufferWriter<byte>, long>)d;
         }
-        public static Func<T, IBufferWriter<byte>, long>? GenerateEncodedGetterLambda2<T>(this PropertyInfo propertyInfo)
-        {
-            // Build an equivalent process with ExpresstionTree.
-            // Func<T, long> getCategoryId = (i,writer) => Formatter.GetBytes((i as T).CategoryId,writer);
-            if (typeof(T) != propertyInfo.DeclaringType)
-                return null;
-            if (!IsSupportedType(propertyInfo.PropertyType))
-                return null;
+        //public static Func<T, IBufferWriter<byte>, long>? GenerateEncodedGetterLambda2<T>(this PropertyInfo propertyInfo)
+        //{
+        //    // Build an equivalent process with ExpresstionTree.
+        //    // Func<T, long> getCategoryId = (i,writer) => Formatter.GetBytes((i as T).CategoryId,writer);
+        //    if (typeof(T) != propertyInfo.DeclaringType)
+        //        return null;
+        //    if (!IsSupportedType(propertyInfo.PropertyType))
+        //        return null;
 
-            var instance = Expression.Parameter(propertyInfo.DeclaringType, "i");
-            var writer = Expression.Parameter(typeof(IBufferWriter<byte>), "writer");
-            var property = Expression.Property(instance, propertyInfo);
-            var ps = new Expression[] { property, writer };
-            var method = typeof(ColumnFormatter).GetMethod("GetBytes", new Type[] { propertyInfo.PropertyType, typeof(IBufferWriter<byte>) });
-            if (method == null)
-                return null;
+        //    var instance = Expression.Parameter(propertyInfo.DeclaringType, "i");
+        //    var writer = Expression.Parameter(typeof(IBufferWriter<byte>), "writer");
+        //    var property = Expression.Property(instance, propertyInfo);
+        //    var ps = new Expression[] { property, writer };
+        //    var method = typeof(ColumnFormatter).GetMethod("GetBytes", new Type[] { propertyInfo.PropertyType, typeof(IBufferWriter<byte>) });
+        //    if (method == null)
+        //        return null;
 
-            var call = Expression.Call(method, ps);
-            return (Func<T, IBufferWriter<byte>, long>)Expression.Lambda(call, instance, writer).Compile();
-        }
+        //    var call = Expression.Call(method, ps);
+        //    return (Func<T, IBufferWriter<byte>, long>)Expression.Lambda(call, instance, writer).Compile();
+        //}
 
         //public static Func<object, object> GenerateGetterLambda<T>(this PropertyInfo propertyInfo)
         //{
