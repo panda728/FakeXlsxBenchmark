@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -66,6 +67,10 @@ namespace FakeExcelBuilder.ExpressionTree
 </sheetView>
 </sheetViews>";
 
+        private const int COLUMN_WIDTH_MAX = 100;
+        private const int COLUMN_WIDTH_MARGIN = 2;
+
+        static readonly ConcurrentDictionary<Type, PropCache[]> _dic = new();
         public async Task RunAsync<T>(string fileName, IEnumerable<T> rows, bool writeTitle = true, bool columnAutoFit = true)
         {
             var workPath = Path.Combine("work", Guid.NewGuid().ToString());
@@ -161,28 +166,27 @@ namespace FakeExcelBuilder.ExpressionTree
         private void CreateSheet<T>(Stream stream, IEnumerable<T> rows, bool writeTitle, bool columnAutoFit)
         {
             SharedStringsClear();
+            using var writer = new ArrayPoolBufferWriter(1024);
 
-            var properties = typeof(T)
+            var properties = _dic.GetOrAdd(typeof(T),
+                typeof(T)
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .Select(x => new PropCache(typeof(T), x))
                 .ToArray()
-                .AsSpan();
+            ).AsSpan();
 
-            @"<worksheet xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" xmlns:r=""http://schemas.openxmlformats.org/officeDocument/2006/relationships"">"
-                .WriteToStream(stream);
-            _newLine.WriteToStream(stream);
+            Encoding.UTF8.GetBytes(
+                @"<worksheet xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" xmlns:r=""http://schemas.openxmlformats.org/officeDocument/2006/relationships"">"
+                , writer);
+            writer.Write(_newLine);
+            writer.CopyTo(stream);
 
             if (writeTitle)
             {
-                _frozenTitleRow.WriteToStream(stream);
-                _newLine.WriteToStream(stream);
+                Encoding.UTF8.GetBytes(_frozenTitleRow, writer);
+                writer.Write(_newLine);
+                writer.CopyTo(stream);
             }
-
-            //foreach(var r in rows.Take(10))
-            //{
-            //    foreach (var p in properties)
-            //        Console.WriteLine(p.Getter(r));
-            //}
 
             if (columnAutoFit)
             {
@@ -197,50 +201,56 @@ namespace FakeExcelBuilder.ExpressionTree
                         })
                         .Max(s => s.Length);
                     p.Length = Math.Min(
-                        Math.Max(maxLength, p.Name.Length) + 2,
-                        100);
+                        Math.Max(maxLength, p.Name.Length) + COLUMN_WIDTH_MARGIN,
+                        COLUMN_WIDTH_MAX);
                 }
 
                 var i = 0;
-                "<cols>".WriteToStream(stream);
+                Encoding.UTF8.GetBytes("<cols>", writer);
                 foreach (var p in properties)
                 {
                     ++i;
-                    @$"<col min=""{i}"" max =""{i}"" width =""{p.Length:0.0}"" bestFit =""1"" customWidth =""1"" />"
-                        .WriteToStream(stream);
+                    Encoding.UTF8.GetBytes(
+                        @$"<col min=""{i}"" max =""{i}"" width =""{p.Length:0.0}"" bestFit =""1"" customWidth =""1"" />"
+                        , writer);
                 }
-                "</cols>".WriteToStream(stream);
-                _newLine.WriteToStream(stream);
+                Encoding.UTF8.GetBytes("</cols>", writer);
+                writer.Write(_newLine);
+                writer.CopyTo(stream);
             }
 
-            "<sheetData>".WriteToStream(stream);
-            _newLine.WriteToStream(stream);
+            Encoding.UTF8.GetBytes("<sheetData>", writer);
+            writer.Write(_newLine);
 
             if (writeTitle)
             {
-                _rowTag1.WriteToStream(stream);
+                writer.Write(_rowTag1);
                 foreach (var p in properties)
-                    GetColumnXml(p.Name).WriteToStream(stream);
-                _rowTag2.WriteToStream(stream);
-                _newLine.WriteToStream(stream);
+                    Encoding.UTF8.GetBytes(GetColumnXml(p.Name), writer);
+                writer.Write(_rowTag2);
+                writer.Write(_newLine);
             }
+            writer.CopyTo(stream);
 
             foreach (var r in rows)
             {
                 if (r == null)
                     continue;
 
-                _rowTag1.WriteToStream(stream);
+                writer.Write(_rowTag1);
                 foreach (var p in properties)
-                    GetColumnXml(p.Getter(r)).WriteToStream(stream);
-                _rowTag2.WriteToStream(stream);
-                _newLine.WriteToStream(stream);
+                    Encoding.UTF8.GetBytes(GetColumnXml(p.Getter(r)), writer);
+                writer.Write(_rowTag2);
+                writer.Write(_newLine);
+
+                writer.CopyTo(stream);
             }
 
-            "</sheetData>".WriteToStream(stream);
-            _newLine.WriteToStream(stream);
-            "</worksheet>".WriteToStream(stream);
-            _newLine.WriteToStream(stream);
+            Encoding.UTF8.GetBytes("</sheetData>", writer);
+            writer.Write(_newLine);
+            Encoding.UTF8.GetBytes("</worksheet>", writer);
+            writer.Write(_newLine);
+            writer.CopyTo(stream);
         }
 
         #region c Builder
@@ -320,21 +330,28 @@ namespace FakeExcelBuilder.ExpressionTree
 
         private void CreateStrings(Stream stream)
         {
-            $@"<sst xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" uniqueCount=""{SharedStrings.Count}"">"
-                .WriteToStream(stream);
-            _newLine.WriteToStream(stream);
+            using var writer = new ArrayPoolBufferWriter(1024);
+            Encoding.UTF8.GetBytes(
+                $@"<sst xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" uniqueCount=""{SharedStrings.Count}"">"
+               , writer);
+            writer.Write(_newLine);
+            writer.CopyTo(stream);
 
             var tagA = Encoding.UTF8.GetBytes("<si><t>").AsSpan();
             var tagB = Encoding.UTF8.GetBytes("</t></si>").AsSpan();
             foreach (var s in SharedStrings)
             {
-                tagA.WriteToStream(stream);
-                s.Key.WriteToStream(stream);
-                tagB.WriteToStream(stream);
-                _newLine.WriteToStream(stream);
+                writer.Write(tagA);
+                Encoding.UTF8.GetBytes(s.Key, writer);
+                writer.Write(tagB);
+                writer.Write(_newLine);
+
+                writer.CopyTo(stream);
             }
-            "</sst>".WriteToStream(stream);
-            _newLine.WriteToStream(stream);
+            Encoding.UTF8.GetBytes("</sst>", writer);
+            writer.Write(_newLine);
+
+            writer.CopyTo(stream);
         }
     }
 }

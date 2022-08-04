@@ -7,7 +7,6 @@ using static Bogus.DataSets.Name;
 namespace FakeXlsxBenchmark
 {
     [MarkdownExporterAttribute.GitHub]
-    [ShortRunJob]
     [MemoryDiagnoser]
     public class BuilderTest
     {
@@ -65,7 +64,7 @@ namespace FakeXlsxBenchmark
         {
             if (_users == null)
                 throw new ApplicationException("users is null");
-            var fileName = @"test\hellowworld.xlsx";
+            var fileName = @"test\Reflection.xlsx";
             await _builderRef.RunAsync(fileName, _users);
         }
 
@@ -74,7 +73,7 @@ namespace FakeXlsxBenchmark
         {
             if (_users == null)
                 throw new ApplicationException("users is null");
-            var fileName = @"test\hellowworld.xlsx";
+            var fileName = @"test\ExpressionTree.xlsx";
             await _builderExp.RunAsync(fileName, _users);
         }
         [Benchmark]
@@ -82,7 +81,7 @@ namespace FakeXlsxBenchmark
         {
             if (_users == null)
                 throw new ApplicationException("users is null");
-            var fileName = @"test\hellowworld.xlsx";
+            var fileName = @"test\ExpressionTreeOp.xlsx";
             await _builderExpOp.RunAsync(fileName, _users);
         }
     }

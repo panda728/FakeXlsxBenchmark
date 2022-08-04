@@ -7,9 +7,10 @@ using System.Threading.Tasks;
 
 namespace FakeExcelBuilder.ExpressionTreeOp
 {
-    public class FormatterHelper<T>
+    public class FormatterHelper
     {
         public string Name { get; set; } = "";
-        public Func<T, IBufferWriter<byte>, long>? Formatter { get; set; }
+        public Func<object, IBufferWriter<byte>, long>? Formatter { get; set; }
+        public int MaxLength { get; set; } = 0;
     }
 }
