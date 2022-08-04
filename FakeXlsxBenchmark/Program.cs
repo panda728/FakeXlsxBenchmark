@@ -5,7 +5,8 @@ using FakeXlsxBenchmark;
 var test = new BuilderTest();
 test.Setup();
 //await test.ReflectionAsync();
-test.ExpressionTree();
+//await test.ExpressionTreeAsync();
+await test.ExpressionTreeOpAsync();
 
 #else
 var summary = BenchmarkRunner.Run<BuilderTest>();

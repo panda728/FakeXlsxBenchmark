@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 
-namespace FakeExcelBuilder
+namespace FakeExcelBuilder.Reflection
 {
     public interface IAccessor
     {

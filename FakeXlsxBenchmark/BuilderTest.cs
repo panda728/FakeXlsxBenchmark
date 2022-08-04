@@ -1,5 +1,7 @@
 ﻿using BenchmarkDotNet.Attributes;
 using Bogus;
+using FakeExcelBuilder.ExpressionTree;
+using FakeExcelBuilder.Reflection;
 using static Bogus.DataSets.Name;
 
 namespace FakeXlsxBenchmark
@@ -9,13 +11,12 @@ namespace FakeXlsxBenchmark
     [MemoryDiagnoser]
     public class BuilderTest
     {
-        readonly FakeExcelBuilder.BuilderReflection _builderRef;
-        readonly FakeExcelBuilder.BuilderExpressionTree _builderExp;
+        readonly FakeExcelBuilder.Reflection.Builder _builderRef = new();
+        readonly FakeExcelBuilder.ExpressionTree.Builder _builderExp = new();
+        readonly FakeExcelBuilder.ExpressionTreeOp.Builder _builderExpOp = new();
         List<User>? _users;
         public BuilderTest()
         {
-            _builderRef = new FakeExcelBuilder.BuilderReflection();
-            _builderExp = new FakeExcelBuilder.BuilderExpressionTree();
         }
 
         [Params(1000, 100000)]
@@ -69,12 +70,20 @@ namespace FakeXlsxBenchmark
         }
 
         [Benchmark]
-        public void ExpressionTree()
+        public async Task ExpressionTreeAsync()
         {
             if (_users == null)
                 throw new ApplicationException("users is null");
             var fileName = @"test\hellowworld.xlsx";
-            _builderExp.Run(fileName, _users);
+            await _builderExp.RunAsync(fileName, _users);
+        }
+        [Benchmark]
+        public async Task ExpressionTreeOpAsync()
+        {
+            if (_users == null)
+                throw new ApplicationException("users is null");
+            var fileName = @"test\hellowworld.xlsx";
+            await _builderExpOp.RunAsync(fileName, _users);
         }
     }
 }

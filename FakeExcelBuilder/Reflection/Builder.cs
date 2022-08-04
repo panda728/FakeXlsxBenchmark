@@ -3,19 +3,10 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Text;
 
-namespace FakeExcelBuilder
+namespace FakeExcelBuilder.Reflection
 {
-    public static class Extentions
-    {
-        public static void WriteToStream(this string s, Stream output)
-            => output.Write(Encoding.UTF8.GetBytes(s));
-        public static void WriteToStream(this byte[] bytes, Stream output)
-            => output.Write(bytes);
-        public static void WriteToStream(this Span<byte> bytes, Stream output)
-            => output.Write(bytes);
-    }
 
-    public class BuilderReflection
+    public class Builder
     {
         byte[] _contentTypes = Encoding.UTF8.GetBytes(@"<Types xmlns=""http://schemas.openxmlformats.org/package/2006/content-types"">
 <Default Extension=""rels"" ContentType=""application/vnd.openxmlformats-package.relationships+xml""/>
@@ -231,7 +222,7 @@ namespace FakeExcelBuilder
             _newLine.WriteToStream(stream);
         }
 
-#region c Builder
+        #region c Builder
         static readonly string _emptyColumn = "<c></c>";
         static int _index = 0;
 
@@ -304,7 +295,7 @@ namespace FakeExcelBuilder
 
             return GetObjectColumnXml(o);
         }
-#endregion
+        #endregion
 
         private void CreateStrings(Stream stream)
         {
