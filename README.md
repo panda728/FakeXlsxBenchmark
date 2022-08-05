@@ -2,6 +2,13 @@
 Porting of Gist to C#
 https://gist.github.com/iso2022jp/721df3095f4df512bfe2327503ea1119
 
+Additional Functions
+Create a title line from a property name.
+Fixed display of the first line.
+Add simplified AutoFit function.
+
+
+###Benchmark
 
 BenchmarkDotNet=v0.13.1, OS=Windows 10.0.22000
 Intel Core i7-10610U CPU 1.80GHz, 1 CPU, 8 logical and 4 physical cores
