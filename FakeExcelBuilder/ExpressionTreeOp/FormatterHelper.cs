@@ -6,25 +6,30 @@ namespace FakeExcelBuilder.ExpressionTreeOp
 {
     public class FormatterHelper
     {
-        public FormatterHelper(Type t, PropertyInfo p)
+        public FormatterHelper(Type t, PropertyInfo p, int i)
         {
             Name = p.Name;
             Formatter = FormatterHelperExtention.GenerateEncodedGetterLambda(t, p);
             MaxLength = 0;
+            Index = i;
         }
 
         /// <summary>
+        /// index
+        /// </summary>
+        public int Index { get; init; }
+        /// <summary>
         /// for title
         /// </summary>
-        public string Name { get; set; } = "";
+        public string Name { get; init; }
         /// <summary>
         /// Build Column Xml
         /// </summary>
-        public Func<object, IBufferWriter<byte>, long> Formatter { get; set; }
+        public Func<object, IBufferWriter<byte>, long> Formatter { get; init; }
         /// <summary>
         /// for autofit
         /// </summary>
-        public int MaxLength { get; set; } = 0;
+        public int MaxLength { get; set; }
     }
 
     public static class FormatterHelperExtention

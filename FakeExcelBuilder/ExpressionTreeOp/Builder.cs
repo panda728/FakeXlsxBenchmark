@@ -140,7 +140,8 @@ namespace FakeExcelBuilder.ExpressionTreeOp
             => _dic.GetOrAdd(t, key
                 => t.GetProperties(BindingFlags.Instance | BindingFlags.Public)
                     .AsParallel()
-                    .Select(p => new FormatterHelper(t, p))
+                    .Select((p, i) => new FormatterHelper(t, p, i))
+                    .OrderBy(f => f.Index)
                     .ToArray()
             );
 

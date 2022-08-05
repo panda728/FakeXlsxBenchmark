@@ -167,7 +167,6 @@ namespace FakeExcelBuilder.ExpressionTree
         private static PropCache[] Generate(Type t)
             => _dic.GetOrAdd(t, key
                 => t.GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                    .AsParallel()
                     .Select(x => new PropCache(t, x))
                     .ToArray()
             );
