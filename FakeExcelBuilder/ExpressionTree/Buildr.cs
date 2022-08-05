@@ -163,13 +163,13 @@ namespace FakeExcelBuilder.ExpressionTree
             public int Length { get; set; } = 0;
         }
 
-        public void Compile<T>() => _ = ParseProperties<T>();
-        private static PropCache[] ParseProperties<T>()
-            => _dic.GetOrAdd(typeof(T),
-                typeof(T)
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                .Select(x => new PropCache(typeof(T), x))
-                .ToArray()
+        public void Compile(Type t) => Generate(t);
+        private static PropCache[] Generate(Type t)
+            => _dic.GetOrAdd(t, key
+                => t.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                    .AsParallel()
+                    .Select(x => new PropCache(t, x))
+                    .ToArray()
             );
 
         private void CreateSheet<T>(Stream stream, IEnumerable<T> rows, bool writeTitle, bool columnAutoFit)
@@ -177,7 +177,7 @@ namespace FakeExcelBuilder.ExpressionTree
             SharedStringsClear();
             using var writer = new ArrayPoolBufferWriter(1024);
 
-            var properties = ParseProperties<T>().AsSpan();
+            var properties = Generate(typeof(T)).AsSpan();
 
             Encoding.UTF8.GetBytes(
                 @"<worksheet xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" xmlns:r=""http://schemas.openxmlformats.org/officeDocument/2006/relationships"">"

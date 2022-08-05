@@ -25,9 +25,9 @@ namespace FakeXlsxBenchmark
         [GlobalSetup]
         public void Setup()
         {
-            //_builderRef.Compile<User>();
-            //_builderExp.Compile<User>();
-            //_builderExpOp.Compile<User>();
+            //_builderRef.Compile(typeof(User));
+            //_builderExp.Compile(typeof(User));
+            //_builderExpOp.Compile(typeof(User));
 
             Randomizer.Seed = new Random(8675309);
 

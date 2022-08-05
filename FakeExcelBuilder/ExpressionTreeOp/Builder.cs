@@ -135,16 +135,12 @@ namespace FakeExcelBuilder.ExpressionTreeOp
 #endif
         }
 
-        public void Compile<T>() => _ = ParseFormatters<T>();
-        private static FormatterHelper[] ParseFormatters<T>()
-            => _dic.GetOrAdd(typeof(T),
-                typeof(T)
-                    .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                    .Select(x => new FormatterHelper()
-                    {
-                        Name = x.Name,
-                        Formatter = PropertyInfoExtensions.GenerateEncodedGetterLambda<T>(x)
-                    })
+        public void Compile(Type t) => GenerateFormatters(t);
+        static FormatterHelper[] GenerateFormatters(Type t)
+            => _dic.GetOrAdd(t, key
+                => t.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                    .AsParallel()
+                    .Select(p => new FormatterHelper(t, p))
                     .ToArray()
             );
 
@@ -152,7 +148,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
         {
             using var writer = new ArrayPoolBufferWriter(1024);
             ColumnFormatter.SharedStringsClear();
-            var formatters = ParseFormatters<T>().AsSpan();
+            var formatters = GenerateFormatters(typeof(T)).AsSpan();
 
             if (autoFitColumns)
             {
@@ -160,7 +156,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
                 {
                     var maxLength = rows
                         .Take(100)
-                        .Select(r => f.Formatter == null ? 0 : (int)f.Formatter(r, writer))
+                        .Select(r => r == null || f.Formatter == null ? 0 : (int)f.Formatter(r, writer))
                         .Max(x => x);
                     f.MaxLength = Math.Min(
                         Math.Max(maxLength, f.Name.Length) + COLUMN_WIDTH_MARGIN,
@@ -169,12 +165,48 @@ namespace FakeExcelBuilder.ExpressionTreeOp
                 writer.Clear();
             }
 
-            WriteHeader<T>(fsSheet, writeTitle, autoFitColumns);
+            WriteHeader(formatters, fsSheet, writeTitle, autoFitColumns);
 
+            foreach (var row in rows)
+            {
+                if (row == null) continue;
+                writer.Write(_rowTag1);
+                foreach (var f in formatters)
+                    f.Formatter(row, writer);
+
+                writer.Write(_rowTag2);
+                writer.Write(_newLine);
+                writer.CopyTo(fsSheet);
+            }
+
+            Encoding.UTF8.GetBytes("</sheetData>", writer);
+            writer.Write(_newLine);
+            Encoding.UTF8.GetBytes("</worksheet>", writer);
+            writer.Write(_newLine);
+            writer.CopyTo(fsSheet);
+
+            WriteSharedStrings(fsString, ColumnFormatter.SharedStrings);
+            ColumnFormatter.SharedStringsClear();
+        }
+
+        void WriteHeader(Span<FormatterHelper> formatters, Stream fsSheet, bool writeTitle, bool autoFitColumns)
+        {
+            using var writer = new ArrayPoolBufferWriter(1024);
+            Encoding.UTF8.GetBytes(
+                @"<worksheet xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" xmlns:r=""http://schemas.openxmlformats.org/officeDocument/2006/relationships"">"
+                , writer);
+            writer.Write(_newLine);
+
+            if (writeTitle)
+            {
+                writer.Write(_frozenTitleRow);
+                writer.Write(_newLine);
+            }
+            writer.CopyTo(fsSheet);
             if (autoFitColumns)
             {
                 var i = 0;
-                fsSheet.Write(Encoding.UTF8.GetBytes("<cols>"));
+                Encoding.UTF8.GetBytes("<cols>", writer);
                 foreach (var f in formatters)
                 {
                     ++i;
@@ -184,58 +216,20 @@ namespace FakeExcelBuilder.ExpressionTreeOp
                 }
                 Encoding.UTF8.GetBytes("</cols>", writer);
                 writer.Write(_newLine);
+                writer.CopyTo(fsSheet);
             }
             Encoding.UTF8.GetBytes("<sheetData>", writer);
             writer.Write(_newLine);
+
+            if (writeTitle)
+            {
+                writer.Write(_rowTag1);
+                foreach (var f in formatters)
+                    ColumnFormatter.Serialize(f.Name, writer);
+                writer.Write(_rowTag2);
+                writer.Write(_newLine);
+            }
             writer.CopyTo(fsSheet);
-
-            if (writeTitle)
-            {
-                writer.Write(_rowTag1);
-                foreach (var f in formatters)
-                    ColumnFormatter.GetBytes(f.Name, writer);
-                writer.Write(_rowTag2);
-                writer.Write(_newLine);
-                writer.CopyTo(fsSheet);
-            }
-
-            foreach (var row in rows)
-            {
-                if (row == null) continue;
-                writer.Write(_rowTag1);
-                foreach (var f in formatters)
-                {
-                    if (f.Formatter == null)
-                        _ = ColumnFormatter.WriteEmptyCoulumn(writer);
-                    else
-                        _ = f.Formatter(row, writer);
-                }
-                writer.Write(_rowTag2);
-                writer.Write(_newLine);
-                writer.CopyTo(fsSheet);
-            }
-
-            fsSheet.Write(Encoding.UTF8.GetBytes("</sheetData>"));
-            fsSheet.Write(_newLine);
-            fsSheet.Write(Encoding.UTF8.GetBytes("</worksheet>"));
-            fsSheet.Write(_newLine);
-
-            WriteSharedStrings(fsString, ColumnFormatter.SharedStrings);
-            ColumnFormatter.SharedStringsClear();
-        }
-
-        void WriteHeader<T>(Stream stream, bool writeTitle, bool autoFitColumns)
-        {
-            stream.Write(
-                Encoding.UTF8.GetBytes(@"<worksheet xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" xmlns:r=""http://schemas.openxmlformats.org/officeDocument/2006/relationships"">")
-            );
-            stream.Write(_newLine);
-
-            if (writeTitle)
-            {
-                stream.Write(_frozenTitleRow);
-                stream.Write(_newLine);
-            }
         }
 
         private void WriteSharedStrings(Stream stream, Dictionary<string, int> sharedStrings)
@@ -244,6 +238,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
             Encoding.UTF8.GetBytes($@"<sst xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" uniqueCount=""{sharedStrings.Count}"">"
                 , writer);
             writer.Write(_newLine);
+            writer.CopyTo(stream);
 
             var tagA = Encoding.UTF8.GetBytes("<si><t>").AsSpan();
             var tagB = Encoding.UTF8.GetBytes("</t></si>").AsSpan();
