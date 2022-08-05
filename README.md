@@ -8,7 +8,7 @@ Fixed display of the first line.
 Add simplified AutoFit function.
 
 
-###Benchmark
+##Benchmark
 
 BenchmarkDotNet=v0.13.1, OS=Windows 10.0.22000
 Intel Core i7-10610U CPU 1.80GHz, 1 CPU, 8 logical and 4 physical cores
