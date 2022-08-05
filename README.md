@@ -3,9 +3,9 @@ Porting of Gist to C#
 https://gist.github.com/iso2022jp/721df3095f4df512bfe2327503ea1119
 
 Additional Functions
-Create a title line from a property name.
-Fixed display of the first line.
-Add simplified AutoFit function.
+-Create a title line from a property name.
+-Fixed display of the first line.
+-Add simplified AutoFit function.
 
 
 ##Benchmark
