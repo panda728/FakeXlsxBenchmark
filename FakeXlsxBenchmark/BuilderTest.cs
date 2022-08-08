@@ -14,6 +14,7 @@ namespace FakeXlsxBenchmark
         readonly FakeExcelBuilder.Reflection.Builder _builderRef = new();
         readonly FakeExcelBuilder.ExpressionTree.Builder _builderExp = new();
         readonly FakeExcelBuilder.ExpressionTreeOp.Builder _builderExpOp = new();
+        readonly FakeExcelBuilder.ExpressionTreeOp.Builder _builderExpOp2 = new();
         List<User>? _users;
         public BuilderTest()
         {
@@ -62,6 +63,8 @@ namespace FakeXlsxBenchmark
                 });
 
             _users = testUsers.Generate(N);
+            if(!Directory.Exists("test"))
+                Directory.CreateDirectory("test");
         }
 
         [Benchmark(Baseline = true)]
@@ -88,6 +91,14 @@ namespace FakeXlsxBenchmark
                 throw new ApplicationException("users is null");
             var fileName = @"test\ExpressionTreeOp.xlsx";
             await _builderExpOp.RunAsync(fileName, _users);
+        }
+        [Benchmark]
+        public async Task ExpressionTreeOp2Async()
+        {
+            if (_users == null)
+                throw new ApplicationException("users is null");
+            var fileName = @"test\ExpressionTreeOp2.xlsx";
+            await _builderExpOp2.RunAsync(fileName, _users);
         }
     }
 }

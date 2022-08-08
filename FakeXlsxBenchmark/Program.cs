@@ -7,6 +7,7 @@ test.Setup();
 await test.ReflectionAsync();
 await test.ExpressionTreeAsync();
 await test.ExpressionTreeOpAsync();
+await test.ExpressionTreeOp2Async();
 
 #else
 var summary = BenchmarkRunner.Run<BuilderTest>();
