@@ -175,13 +175,14 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                 @"<worksheet xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" xmlns:r=""http://schemas.openxmlformats.org/officeDocument/2006/relationships"">"
                 , writer);
             writer.Write(_newLine);
+            writer.CopyTo(fsSheet);
 
             if (writeTitle)
             {
                 writer.Write(_frozenTitleRow);
                 writer.Write(_newLine);
+                writer.CopyTo(fsSheet);
             }
-            writer.CopyTo(fsSheet);
             if (autoFitColumns)
             {
                 var i = 0;
@@ -192,6 +193,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                     Encoding.UTF8.GetBytes(
                         @$"<col min=""{i}"" max =""{i}"" width =""{f.MaxLength:0.0}"" bestFit =""1"" customWidth =""1"" />",
                         writer);
+                    writer.CopyTo(fsSheet);
                 }
                 Encoding.UTF8.GetBytes("</cols>", writer);
                 writer.Write(_newLine);
@@ -199,6 +201,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             }
             Encoding.UTF8.GetBytes("<sheetData>", writer);
             writer.Write(_newLine);
+            writer.CopyTo(fsSheet);
 
             if (writeTitle)
             {
@@ -207,15 +210,18 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                     Formatter.Serialize(f.Name, writer);
                 writer.Write(_rowTag2);
                 writer.Write(_newLine);
+                writer.CopyTo(fsSheet);
             }
-            writer.CopyTo(fsSheet);
 
             foreach (var row in rows)
             {
                 if (row == null) continue;
                 writer.Write(_rowTag1);
                 foreach (var f in formatters)
+                {
                     f.Formatter(row, writer);
+                    writer.CopyTo(fsSheet);
+                }
 
                 writer.Write(_rowTag2);
                 writer.Write(_newLine);
@@ -234,7 +240,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
 
         private void WriteSharedStrings(Stream stream, Dictionary<string, int> sharedStrings)
         {
-            using var writer = new ArrayPoolBufferWriter(1024);
+            using var writer = new ArrayPoolBufferWriter(512);
             Encoding.UTF8.GetBytes($@"<sst xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" uniqueCount=""{sharedStrings.Count}"">"
                 , writer);
             writer.Write(_newLine);
