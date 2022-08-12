@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
-namespace FakeExcelBuilder.ExpressionTreeOp2    
+namespace FakeExcelBuilder.ExpressionTreeOp2
 {
     public class Builder
     {
@@ -62,13 +62,20 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
         private const int XF_DATETIME = 3;
 
         readonly byte[] _newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
-        readonly byte[] _rowTag1 = Encoding.UTF8.GetBytes("<row>");
-        readonly byte[] _rowTag2 = Encoding.UTF8.GetBytes("</row>");
+        readonly byte[] _rowStart = Encoding.UTF8.GetBytes("<row>");
+        readonly byte[] _rowEnd = Encoding.UTF8.GetBytes("</row>");
+        readonly byte[] _colStart = Encoding.UTF8.GetBytes("<cols>");
+        readonly byte[] _colEnd = Encoding.UTF8.GetBytes("</cols>");
         readonly byte[] _frozenTitleRow = Encoding.UTF8.GetBytes(@"<sheetViews>
 <sheetView tabSelected=""1"" workbookViewId=""0"">
 <pane ySplit=""1"" topLeftCell=""A2"" activePane=""bottomLeft"" state=""frozen""/>
 </sheetView>
 </sheetViews>");
+
+        readonly byte[] _sheetStart = Encoding.UTF8.GetBytes(@"<worksheet xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" xmlns:r=""http://schemas.openxmlformats.org/officeDocument/2006/relationships"">");
+        readonly byte[] _sheetEnd = Encoding.UTF8.GetBytes(@"</worksheet>");
+        readonly byte[] _dataStart = Encoding.UTF8.GetBytes(@"<sheetData>");
+        readonly byte[] _dataEnd = Encoding.UTF8.GetBytes(@"</sheetData>");
 
         private const int COLUMN_WIDTH_MAX = 100;
         private const int COLUMN_WIDTH_MARGIN = 2;
@@ -117,7 +124,10 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                 using (var fsSheet = CreateStream(Path.Combine(workPath, "sheet.xml")))
                 using (var fsString = CreateStream(Path.Combine(workPath, "strings.xml")))
                 {
-                    CreateSheet(rows, fsSheet, fsString, writeTitle, columnAutoFit);
+                    Formatter.SharedStringsClear();
+                    CreateSheet(rows, fsSheet, writeTitle, columnAutoFit);
+                    WriteSharedStrings(fsString, Formatter.SharedStrings);
+                    Formatter.SharedStringsClear();
                 }
 #if DEBUG
                 ZipFile.CreateFromDirectory(workPath, fileName);
@@ -150,43 +160,48 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
 #endif
         }
 
-        public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, Stream fsString, bool writeTitle, bool autoFitColumns)
+        void CalcCellStringLength<T>(IEnumerable<T> rows)
         {
-            using var writer = new ArrayPoolBufferWriter(1024);
-            Formatter.SharedStringsClear();
             var formatters = GetPropertiesCache<T>.Properties.AsSpan();
-
-            if (autoFitColumns)
+            using var buffer = new ArrayPoolBufferWriter();
+            foreach (var f in formatters)
             {
-                foreach (var f in formatters)
-                {
-                    var maxLength = rows
-                        .Take(100)
-                        .Select(r => r == null || f.Formatter == null ? 0 : (int)f.Formatter(r, writer))
-                        .Max(x => x);
-                    f.MaxLength = Math.Min(
-                        Math.Max(maxLength, f.Name.Length) + COLUMN_WIDTH_MARGIN,
-                        COLUMN_WIDTH_MAX);
-                }
-                writer.Clear();
+                var maxLength = rows
+                    .Take(100)
+                    .Select(r =>
+                    {
+                        if (r == null || f.Formatter == null) return 0;
+                        var len = (int)f.Formatter(r, buffer);
+                        buffer.Clear();
+                        return len;
+                    })
+                    .Max(x => x);
+                f.MaxLength = Math.Min(
+                    Math.Max(maxLength, f.Name.Length) + COLUMN_WIDTH_MARGIN,
+                    COLUMN_WIDTH_MAX);
             }
+        }
 
-            Encoding.UTF8.GetBytes(
-                @"<worksheet xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" xmlns:r=""http://schemas.openxmlformats.org/officeDocument/2006/relationships"">"
-                , writer);
-            writer.Write(_newLine);
-            writer.CopyTo(fsSheet);
+        public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, bool writeTitle, bool autoFitColumns)
+        {
+            if (autoFitColumns)
+                CalcCellStringLength(rows);
+
+            fsSheet.Write(_sheetStart);
+            fsSheet.Write(_newLine);
 
             if (writeTitle)
             {
-                writer.Write(_frozenTitleRow);
-                writer.Write(_newLine);
-                writer.CopyTo(fsSheet);
+                fsSheet.Write(_frozenTitleRow);
+                fsSheet.Write(_newLine);
             }
+
+            using var writer = new ArrayPoolBufferWriter();
+            var formatters = GetPropertiesCache<T>.Properties.AsSpan();
             if (autoFitColumns)
             {
                 var i = 0;
-                Encoding.UTF8.GetBytes("<cols>", writer);
+                writer.Write(_colStart);
                 foreach (var f in formatters)
                 {
                     ++i;
@@ -195,66 +210,66 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                         writer);
                     writer.CopyTo(fsSheet);
                 }
-                Encoding.UTF8.GetBytes("</cols>", writer);
+                writer.Write(_colEnd);
                 writer.Write(_newLine);
                 writer.CopyTo(fsSheet);
             }
-            Encoding.UTF8.GetBytes("<sheetData>", writer);
-            writer.Write(_newLine);
-            writer.CopyTo(fsSheet);
+
+            fsSheet.Write(_dataStart);
+            fsSheet.Write(_newLine);
 
             if (writeTitle)
             {
-                writer.Write(_rowTag1);
+                fsSheet.Write(_rowStart);
                 foreach (var f in formatters)
+                {
                     Formatter.Serialize(f.Name, writer);
-                writer.Write(_rowTag2);
-                writer.Write(_newLine);
-                writer.CopyTo(fsSheet);
+                    writer.CopyTo(fsSheet);
+                }
+                fsSheet.Write(_rowEnd);
+                fsSheet.Write(_newLine);
             }
 
             foreach (var row in rows)
             {
                 if (row == null) continue;
-                writer.Write(_rowTag1);
+                fsSheet.Write(_rowStart);
                 foreach (var f in formatters)
                 {
                     f.Formatter(row, writer);
                     writer.CopyTo(fsSheet);
                 }
 
-                writer.Write(_rowTag2);
-                writer.Write(_newLine);
-                writer.CopyTo(fsSheet);
+                fsSheet.Write(_rowEnd);
+                fsSheet.Write(_newLine);
             }
 
-            Encoding.UTF8.GetBytes("</sheetData>", writer);
-            writer.Write(_newLine);
-            Encoding.UTF8.GetBytes("</worksheet>", writer);
-            writer.Write(_newLine);
-            writer.CopyTo(fsSheet);
-
-            WriteSharedStrings(fsString, Formatter.SharedStrings);
-            Formatter.SharedStringsClear();
+            fsSheet.Write(_dataEnd);
+            fsSheet.Write(_newLine);
+            fsSheet.Write(_sheetEnd);
+            fsSheet.Write(_newLine);
         }
+
+        readonly byte[] _sstStart = Encoding.UTF8.GetBytes(@"</sheetData>");
+        readonly byte[] _sstEnd = Encoding.UTF8.GetBytes(@"</sheetData>");
+        readonly byte[] _siStart = Encoding.UTF8.GetBytes("<si><t>");
+        readonly byte[] _siEnd = Encoding.UTF8.GetBytes("</t></si>");
 
         private void WriteSharedStrings(Stream stream, Dictionary<string, int> sharedStrings)
         {
-            using var writer = new ArrayPoolBufferWriter(512);
+            using var writer = new ArrayPoolBufferWriter();
             Encoding.UTF8.GetBytes($@"<sst xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" uniqueCount=""{sharedStrings.Count}"">"
                 , writer);
             writer.Write(_newLine);
             writer.CopyTo(stream);
 
-            var tagA = Encoding.UTF8.GetBytes("<si><t>").AsSpan();
-            var tagB = Encoding.UTF8.GetBytes("</t></si>").AsSpan();
             foreach (var s in sharedStrings)
             {
-                writer.Write(tagA);
+                stream.Write(_siStart);
                 Encoding.UTF8.GetBytes(s.Key, writer);
-                writer.Write(tagB);
-                writer.Write(_newLine);
                 writer.CopyTo(stream);
+                stream.Write(_siEnd);
+                stream.Write(_newLine);
             }
             Encoding.UTF8.GetBytes("</sst>", writer);
             writer.Write(_newLine);

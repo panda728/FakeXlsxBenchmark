@@ -14,7 +14,7 @@ namespace FakeXlsxBenchmark
         readonly FakeExcelBuilder.Reflection.Builder _builderRef = new();
         readonly FakeExcelBuilder.ExpressionTree.Builder _builderExp = new();
         readonly FakeExcelBuilder.ExpressionTreeOp.Builder _builderExpOp = new();
-        readonly FakeExcelBuilder.ExpressionTreeOp.Builder _builderExpOp2 = new();
+        readonly FakeExcelBuilder.ExpressionTreeOp2.Builder _builderExpOp2 = new();
         List<User>? _users;
         public BuilderTest()
         {
