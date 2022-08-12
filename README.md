@@ -15,12 +15,14 @@ Intel Core i7-10610U CPU 1.80GHz, 1 CPU, 8 logical and 4 physical cores
   [Host]     : .NET 6.0.6 (6.0.622.26707), X64 RyuJIT  [AttachedDebugger]
   DefaultJob : .NET 6.0.6 (6.0.622.26707), X64 RyuJIT
 
-|                Method |      N |       Mean |      Error |    StdDev | Ratio | RatioSD |      Gen 0 |     Gen 1 |  Allocated |
-|---------------------- |------- |-----------:|-----------:|----------:|------:|--------:|-----------:|----------:|-----------:|
-|       ReflectionAsync |   1000 |   5.163 ms |  0.1004 ms | 0.0986 ms |  1.00 |    0.00 |   320.3125 |   23.4375 |   1,328 KB |
-|   ExpressionTreeAsync |   1000 |   5.373 ms |  0.1072 ms | 0.1700 ms |  1.03 |    0.05 |   320.3125 |   23.4375 |   1,328 KB |
-| ExpressionTreeOpAsync |   1000 |   5.389 ms |  0.0769 ms | 0.0682 ms |  1.04 |    0.02 |   187.5000 |         - |     777 KB |
-|                       |        |            |            |           |       |         |            |           |            |
-|       ReflectionAsync | 100000 | 609.558 ms | 10.0962 ms | 8.9500 ms |  1.00 |    0.00 | 21000.0000 | 5000.0000 | 132,076 KB |
-|   ExpressionTreeAsync | 100000 | 594.267 ms | 10.0561 ms | 7.8512 ms |  0.98 |    0.02 | 21000.0000 | 5000.0000 | 132,076 KB |
-| ExpressionTreeOpAsync | 100000 | 578.450 ms |  9.6359 ms | 9.0134 ms |  0.95 |    0.02 | 12000.0000 | 3000.0000 |  74,280 KB |
+|                 Method |      N |        Mean |     Error |    StdDev | Ratio | RatioSD |      Gen 0 |     Gen 1 |  Allocated |
+|----------------------- |------- |------------:|----------:|----------:|------:|--------:|-----------:|----------:|-----------:|
+|        ReflectionAsync |   1000 |    12.67 ms |  0.462 ms |  1.341 ms |  1.00 |    0.00 |   312.5000 |   46.8750 |   1,328 KB |
+|    ExpressionTreeAsync |   1000 |    13.34 ms |  0.628 ms |  1.802 ms |  1.06 |    0.19 |   312.5000 |   31.2500 |   1,328 KB |
+|  ExpressionTreeOpAsync |   1000 |    12.25 ms |  0.448 ms |  1.265 ms |  0.98 |    0.16 |   187.5000 |         - |     777 KB |
+| ExpressionTreeOp2Async |   1000 |    10.84 ms |  0.436 ms |  1.237 ms |  0.86 |    0.12 |   187.5000 |   46.8750 |     776 KB |
+|                        |        |             |           |           |       |         |            |           |            |
+|        ReflectionAsync | 100000 | 1,087.91 ms | 21.056 ms | 32.155 ms |  1.00 |    0.00 | 21000.0000 | 5000.0000 | 132,076 KB |
+|    ExpressionTreeAsync | 100000 | 1,076.49 ms | 21.459 ms | 38.144 ms |  0.99 |    0.05 | 21000.0000 | 5000.0000 | 132,076 KB |
+|  ExpressionTreeOpAsync | 100000 | 1,026.86 ms | 20.527 ms | 43.298 ms |  0.94 |    0.05 | 12000.0000 | 5000.0000 |  74,280 KB |
+| ExpressionTreeOp2Async | 100000 |   936.37 ms | 18.273 ms | 31.030 ms |  0.86 |    0.04 | 12000.0000 | 3000.0000 |  74,256 KB |
