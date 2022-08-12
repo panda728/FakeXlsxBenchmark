@@ -7,10 +7,10 @@ using FakeXlsxBenchmark;
 var test = new BuilderTest();
 test.Setup();
 
-//await test.ReflectionAsync();
-//await test.ExpressionTreeAsync();
-//await test.ExpressionTreeOpAsync();
-//await test.ExpressionTreeOp2Async();
+await test.ReflectionAsync();
+await test.ExpressionTreeAsync();
+await test.ExpressionTreeOpAsync();
+await test.ExpressionTreeOp2Async();
 
 var builder = new FakeExcel.Builder();
 await builder.CreateExcelFileAsync(@"test\\test.xlsx", new string[] { "test1", "test2" });

@@ -6,9 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FakeExcel
+namespace FakeExcelBuilder
 {
-    public class ArrayPoolBufferWriter : IBufferWriter<byte>, IDisposable
+    public class ArrayBufferWriter : IBufferWriter<byte>, IDisposable
     {
         private byte[]? _rentedBuffer;
         private int _written;
@@ -16,7 +16,7 @@ namespace FakeExcel
 
         private const int MinimumBufferSize = 256;
 
-        public ArrayPoolBufferWriter(int initialCapacity = MinimumBufferSize)
+        public ArrayBufferWriter(int initialCapacity = MinimumBufferSize)
         {
             if (initialCapacity <= 0)
                 throw new ArgumentException(nameof(initialCapacity));
@@ -115,7 +115,7 @@ namespace FakeExcel
             CheckIfDisposed();
 
             if (count < 0)
-                throw new ArgumentException(null, nameof(count));
+                throw new ArgumentException(nameof(count));
 
             if (_written > (_rentedBuffer?.Length ?? 0) - count)
                 throw new InvalidOperationException("Cannot advance past the end of the buffer.");
@@ -139,7 +139,7 @@ namespace FakeExcel
         private void CheckIfDisposed()
         {
             if (_rentedBuffer == null)
-                throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter));
+                throw new ObjectDisposedException(nameof(ArrayBufferWriter));
         }
 
         public Memory<byte> GetMemory(int sizeHint = 0)

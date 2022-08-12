@@ -1,4 +1,5 @@
-﻿using System.Buffers;
+﻿using Microsoft.Toolkit.HighPerformance.Buffers;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Linq.Expressions;
@@ -168,7 +169,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
 
         void CalcCellStringLength<T>(Span<FormatterHelper<T>> formatters, IEnumerable<T> rows)
         {
-            using var buffer = new ArrayPoolBufferWriter();
+            using var buffer = new ArrayPoolBufferWriter<byte>();
             foreach (var f in formatters)
             {
                 var maxLength = rows
@@ -202,7 +203,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                 fsSheet.Write(_newLine);
             }
 
-            using var writer = new ArrayPoolBufferWriter();
+            using var writer = new ArrayPoolBufferWriter<byte>();
             if (autoFitColumns)
             {
                 var i = 0;
@@ -213,7 +214,8 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                     Encoding.UTF8.GetBytes(
                         @$"<col min=""{i}"" max =""{i}"" width =""{f.MaxLength:0.0}"" bestFit =""1"" customWidth =""1"" />",
                         writer);
-                    writer.CopyTo(fsSheet);
+                    fsSheet.Write(writer.WrittenSpan);
+                    writer.Clear();
                 }
                 fsSheet.Write(_colEnd);
                 fsSheet.Write(_newLine);
@@ -228,7 +230,8 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                 foreach (var f in formatters)
                 {
                     Formatter.Serialize(f.Name, writer);
-                    writer.CopyTo(fsSheet);
+                    fsSheet.Write(writer.WrittenSpan);
+                    writer.Clear();
                 }
                 fsSheet.Write(_rowEnd);
                 fsSheet.Write(_newLine);
@@ -241,7 +244,8 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                 foreach (var f in formatters)
                 {
                     f.Formatter(row, writer);
-                    writer.CopyTo(fsSheet);
+                    fsSheet.Write(writer.WrittenSpan);
+                    writer.Clear();
                 }
                 fsSheet.Write(_rowEnd);
                 fsSheet.Write(_newLine);
@@ -257,7 +261,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             stream.Write(_sstStart);
             stream.Write(_newLine);
 
-            using var writer = new ArrayPoolBufferWriter();
+            using var writer = new ArrayBufferWriter();
             foreach (var s in sharedStrings)
             {
                 stream.Write(_siStart);

@@ -159,7 +159,7 @@ namespace FakeExcelBuilder.Reflection
         private void CreateSheet<T>(Stream stream, IEnumerable<T> rows, bool showTitleRow, bool columnAutoFit)
         {
             SharedStringsClear();
-            using var writer = new ArrayPoolBufferWriter(1024);
+            using var writer = new ArrayBufferWriter(1024);
 
             var properties = Generate(typeof(T)).AsSpan();
 
@@ -319,7 +319,7 @@ namespace FakeExcelBuilder.Reflection
 
         private void CreateStrings(Stream stream)
         {
-            using var writer = new ArrayPoolBufferWriter(1024);
+            using var writer = new ArrayBufferWriter(1024);
             Encoding.UTF8.GetBytes(
                 $@"<sst xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" uniqueCount=""{SharedStrings.Count}"">"
                 , writer

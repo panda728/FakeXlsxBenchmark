@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using Microsoft.Toolkit.HighPerformance.Buffers;
 
 namespace FakeExcel
 {
@@ -174,7 +175,7 @@ namespace FakeExcel
 
         void CalcCellStringLength<T>(Span<FormatterHelper<T>> formatters, IEnumerable<T> rows)
         {
-            using var buffer = new ArrayPoolBufferWriter();
+            using var buffer = new ArrayPoolBufferWriter<byte>();
             foreach (var f in formatters)
             {
                 var maxLength = rows
@@ -204,7 +205,7 @@ namespace FakeExcel
                 stream.Write(_newLine);
             }
 
-            using var writer = new ArrayPoolBufferWriter();
+            using var writer = new ArrayPoolBufferWriter<byte>();
             if (autoFitColumns)
             {
                 CalcCellStringLength(formatters, rows);
@@ -216,7 +217,8 @@ namespace FakeExcel
                     Encoding.UTF8.GetBytes(
                         @$"<col min=""{i}"" max =""{i}"" width =""{f.MaxLength:0.0}"" bestFit =""1"" customWidth =""1"" />",
                         writer);
-                    writer.CopyTo(stream);
+                    stream.Write(writer.WrittenSpan);
+                    writer.Clear();
                 }
                 stream.Write(_colEnd);
                 stream.Write(_newLine);
@@ -231,7 +233,8 @@ namespace FakeExcel
                 foreach (var f in formatters)
                 {
                     Formatter.Write(f.Name, writer);
-                    writer.CopyTo(stream);
+                    stream.Write(writer.WrittenSpan);
+                    writer.Clear();
                 }
                 stream.Write(_rowEnd);
                 stream.Write(_newLine);
@@ -244,7 +247,8 @@ namespace FakeExcel
                 foreach (var f in formatters)
                 {
                     f.Writer(row, writer);
-                    writer.CopyTo(stream);
+                    stream.Write(writer.WrittenSpan);
+                    writer.Clear();
                 }
                 stream.Write(_rowEnd);
                 stream.Write(_newLine);
@@ -260,14 +264,15 @@ namespace FakeExcel
             stream.Write(_sstStart);
             stream.Write(_newLine);
 
-            using var writer = new ArrayPoolBufferWriter();
+            using var writer = new ArrayPoolBufferWriter<byte>();
             foreach (var s in sharedStrings)
             {
-                stream.Write(_siStart);
+                writer.Write(_siStart);
                 Encoding.UTF8.GetBytes(s.Key, writer);
-                writer.CopyTo(stream);
-                stream.Write(_siEnd);
-                stream.Write(_newLine);
+                writer.Write(_siEnd);
+                writer.Write(_newLine);
+                stream.Write(writer.WrittenSpan);
+                writer.Clear();
             }
             stream.Write(_sstEnd);
             stream.Write(_newLine);

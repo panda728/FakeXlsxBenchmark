@@ -147,7 +147,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
 
         public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, Stream fsString, bool showTitleRow, bool autoFitColumns)
         {
-            using var writer = new ArrayPoolBufferWriter(1024);
+            using var writer = new ArrayBufferWriter(1024);
             ColumnFormatter.SharedStringsClear();
             var formatters = GenerateFormatters(typeof(T)).AsSpan();
 
@@ -192,7 +192,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
 
         void WriteHeader(Span<FormatterHelper> formatters, Stream fsSheet, bool showTitleRow, bool autoFitColumns)
         {
-            using var writer = new ArrayPoolBufferWriter(1024);
+            using var writer = new ArrayBufferWriter(1024);
             Encoding.UTF8.GetBytes(
                 @"<worksheet xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" xmlns:r=""http://schemas.openxmlformats.org/officeDocument/2006/relationships"">"
                 , writer);
@@ -235,7 +235,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
 
         private void WriteSharedStrings(Stream stream, Dictionary<string, int> sharedStrings)
         {
-            using var writer = new ArrayPoolBufferWriter(1024);
+            using var writer = new ArrayBufferWriter(1024);
             Encoding.UTF8.GetBytes($@"<sst xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" uniqueCount=""{sharedStrings.Count}"">"
                 , writer);
             writer.Write(_newLine);
