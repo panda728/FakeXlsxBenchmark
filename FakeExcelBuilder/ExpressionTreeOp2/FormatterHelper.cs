@@ -23,6 +23,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
     public static class FormatterHelperExtention
     {
         readonly static Type _objectType = typeof(object);
+        readonly static Type _bufferWriter = typeof(IBufferWriter<byte>);
 
         public static Func<T, IBufferWriter<byte>, long> GenerateFormatter<T>(this PropertyInfo p)
         {
@@ -33,27 +34,30 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                 : p.GenerateObject<T>();
         }
 
-        static bool IsSupported(Type t)
+        static bool IsSupported(Type type)
         {
-            if (t.IsPrimitive)
+            if (type.IsPrimitive)
                 return true;
-            if (t == typeof(string) || t == typeof(Guid) || t == typeof(Enum))
-                return true;
-            else if (t == typeof(DateTime) || t == typeof(DateOnly) || t == typeof(TimeOnly) || t == _objectType)
-                return true;
-            return false;
+
+            return type == typeof(string)
+                || type == typeof(Guid)
+                || type == typeof(Enum)
+                || type == typeof(DateTime)
+                || type == typeof(DateOnly)
+                || type == typeof(TimeOnly)
+                || type == typeof(object);
         }
 
         static Func<T, IBufferWriter<byte>, long> GenerateSupported<T>(this PropertyInfo propertyInfo)
         {
-            var method = typeof(Formatter).GetMethod("Serialize", new Type[] { propertyInfo.PropertyType, typeof(IBufferWriter<byte>) });
-            if (method == null)
+            var method = typeof(Formatter).GetMethod("Serialize", new Type[] { propertyInfo.PropertyType, _bufferWriter });
+            if (method == null || propertyInfo.DeclaringType == null)
                 return (o, v) => Formatter.WriteEmpty(v);
 
             // Func<T, long, IBufferWriter<byte>> getCategoryId = (i,writer) => Formatter.Serialize(i.CategoryId, writer);
             var target = Expression.Parameter(propertyInfo.DeclaringType, "i");
             var property = Expression.PropertyOrField(target, propertyInfo.Name);
-            var writer = Expression.Parameter(typeof(IBufferWriter<byte>), "writer");
+            var writer = Expression.Parameter(_bufferWriter, "w");
             var ps = new Expression[] { property, writer };
 
             var call = Expression.Call(method, ps);
@@ -63,15 +67,15 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
 
         static Func<T, IBufferWriter<byte>, long> GenerateObject<T>(this PropertyInfo propertyInfo)
         {
-            var method = typeof(Formatter).GetMethod("Serialize", new Type[] { _objectType, typeof(IBufferWriter<byte>) });
-            if (method == null)
+            var method = typeof(Formatter).GetMethod("Serialize", new Type[] { _objectType, _bufferWriter });
+            if (method == null || propertyInfo.DeclaringType == null)
                 return (o, v) => Formatter.WriteEmpty(v);
 
             // Func<T, long, IBufferWriter<byte>> getCategoryId = (i,writer) => Formatter.Serialize((object)(i.CategoryId), writer);
             var target = Expression.Parameter(propertyInfo.DeclaringType, "i");
             var property = Expression.PropertyOrField(target, propertyInfo.Name);
             var propertyConv = Expression.Convert(property, _objectType);
-            var writer = Expression.Parameter(typeof(IBufferWriter<byte>), "writer");
+            var writer = Expression.Parameter(_bufferWriter, "w");
 
             var ps = new Expression[] { propertyConv, writer };
             var call = Expression.Call(method, ps);

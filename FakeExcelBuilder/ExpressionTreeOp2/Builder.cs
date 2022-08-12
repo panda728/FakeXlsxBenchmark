@@ -77,6 +77,12 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
         readonly byte[] _dataStart = Encoding.UTF8.GetBytes(@"<sheetData>");
         readonly byte[] _dataEnd = Encoding.UTF8.GetBytes(@"</sheetData>");
 
+        readonly byte[] _sstStart = Encoding.UTF8.GetBytes(@"<sst xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"">");
+        //readonly byte[] _sstStart = Encoding.UTF8.GetBytes(@"<sst xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" uniqueCount=""1"">");
+        readonly byte[] _sstEnd = Encoding.UTF8.GetBytes(@"</sst>");
+        readonly byte[] _siStart = Encoding.UTF8.GetBytes("<si><t>");
+        readonly byte[] _siEnd = Encoding.UTF8.GetBytes("</t></si>");
+
         private const int COLUMN_WIDTH_MAX = 100;
         private const int COLUMN_WIDTH_MARGIN = 2;
 
@@ -160,9 +166,8 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
 #endif
         }
 
-        void CalcCellStringLength<T>(IEnumerable<T> rows)
+        void CalcCellStringLength<T>(Span<FormatterHelper<T>> formatters, IEnumerable<T> rows)
         {
-            var formatters = GetPropertiesCache<T>.Properties.AsSpan();
             using var buffer = new ArrayPoolBufferWriter();
             foreach (var f in formatters)
             {
@@ -184,8 +189,9 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
 
         public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, bool writeTitle, bool autoFitColumns)
         {
+            var formatters = GetPropertiesCache<T>.Properties.AsSpan();
             if (autoFitColumns)
-                CalcCellStringLength(rows);
+                CalcCellStringLength(formatters, rows);
 
             fsSheet.Write(_sheetStart);
             fsSheet.Write(_newLine);
@@ -197,11 +203,10 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             }
 
             using var writer = new ArrayPoolBufferWriter();
-            var formatters = GetPropertiesCache<T>.Properties.AsSpan();
             if (autoFitColumns)
             {
                 var i = 0;
-                writer.Write(_colStart);
+                fsSheet.Write(_colStart);
                 foreach (var f in formatters)
                 {
                     ++i;
@@ -210,9 +215,8 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                         writer);
                     writer.CopyTo(fsSheet);
                 }
-                writer.Write(_colEnd);
-                writer.Write(_newLine);
-                writer.CopyTo(fsSheet);
+                fsSheet.Write(_colEnd);
+                fsSheet.Write(_newLine);
             }
 
             fsSheet.Write(_dataStart);
@@ -239,30 +243,21 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                     f.Formatter(row, writer);
                     writer.CopyTo(fsSheet);
                 }
-
                 fsSheet.Write(_rowEnd);
                 fsSheet.Write(_newLine);
             }
-
             fsSheet.Write(_dataEnd);
             fsSheet.Write(_newLine);
             fsSheet.Write(_sheetEnd);
             fsSheet.Write(_newLine);
         }
 
-        readonly byte[] _sstStart = Encoding.UTF8.GetBytes(@"</sheetData>");
-        readonly byte[] _sstEnd = Encoding.UTF8.GetBytes(@"</sheetData>");
-        readonly byte[] _siStart = Encoding.UTF8.GetBytes("<si><t>");
-        readonly byte[] _siEnd = Encoding.UTF8.GetBytes("</t></si>");
-
         private void WriteSharedStrings(Stream stream, Dictionary<string, int> sharedStrings)
         {
-            using var writer = new ArrayPoolBufferWriter();
-            Encoding.UTF8.GetBytes($@"<sst xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" uniqueCount=""{sharedStrings.Count}"">"
-                , writer);
-            writer.Write(_newLine);
-            writer.CopyTo(stream);
+            stream.Write(_sstStart);
+            stream.Write(_newLine);
 
+            using var writer = new ArrayPoolBufferWriter();
             foreach (var s in sharedStrings)
             {
                 stream.Write(_siStart);
@@ -271,9 +266,8 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                 stream.Write(_siEnd);
                 stream.Write(_newLine);
             }
-            Encoding.UTF8.GetBytes("</sst>", writer);
-            writer.Write(_newLine);
-            writer.CopyTo(stream);
+            stream.Write(_sstEnd);
+            stream.Write(_newLine);
         }
     }
 }
