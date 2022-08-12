@@ -133,9 +133,6 @@ namespace FakeExcel
                 if (!Directory.Exists(workRelPath))
                     Directory.CreateDirectory(workRelPath);
 
-                if (File.Exists(fileName))
-                    File.Delete(fileName);
-
                 using (var fs = CreateStream(Path.Combine(workPathRoot, "[Content_Types].xml")))
                     await fs.WriteAsync(_contentTypes);
                 using (var fs = CreateStream(Path.Combine(workRelPath, ".rels")))
@@ -154,6 +151,9 @@ namespace FakeExcel
                     WriteSharedStrings(fsString, Formatter.SharedStrings);
                     Formatter.SharedStringsClear();
                 }
+
+                if (File.Exists(fileName))
+                    File.Delete(fileName);
                 ZipFile.CreateFromDirectory(workPathRoot, fileName);
             }
             catch

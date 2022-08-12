@@ -27,10 +27,11 @@ namespace FakeExcel
         {
             if (string.IsNullOrEmpty(value)) WriteEmpty(writer);
 
-            if (value.Contains(Environment.NewLine))
-                writer.Write(_colStartStringWrap);
-            else
-                writer.Write(_colStartString);
+            writer.Write(
+                value.Contains(Environment.NewLine)
+                    ? _colStartStringWrap
+                    : _colStartString
+            );
 
             var index = GetSharedStringIndex(value);
             Encoding.UTF8.GetBytes(Convert.ToString(index), writer);
@@ -123,4 +124,3 @@ namespace FakeExcel
         }
     }
 }
-
