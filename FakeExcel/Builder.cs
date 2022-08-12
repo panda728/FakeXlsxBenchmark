@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
-namespace FakeExcelBuilder.ExpressionTreeOp2
+namespace FakeExcel
 {
     public class Builder
     {
@@ -56,11 +56,6 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
 </cellXfs>
 </styleSheet>");
 
-        //private const int XF_NORMAL = 0;
-        private const int XF_WRAP_TEXT = 1;
-        private const int XF_DATE = 2;
-        private const int XF_DATETIME = 3;
-
         readonly byte[] _newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
         readonly byte[] _rowStart = Encoding.UTF8.GetBytes("<row>");
         readonly byte[] _rowEnd = Encoding.UTF8.GetBytes("</row>");
@@ -86,12 +81,17 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
         private const int COLUMN_WIDTH_MAX = 100;
         private const int COLUMN_WIDTH_MARGIN = 2;
 
-        public void Compile<T>() => _ = GetPropertiesCache<T>.Properties;
-
-        private static class GetPropertiesCache<T>
+        static class GetPropertiesCache<T>
         {
             static GetPropertiesCache()
             {
+                var type = typeof(T);
+                if (type.Namespace?.StartsWith("System") ?? true)
+                {
+                    Properties = new FormatterHelper<T>[] { new FormatterHelper<T>("value") };
+                    return;
+                }
+
                 Properties = typeof(T)
                     .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                     .AsParallel()
@@ -102,43 +102,58 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             public static readonly FormatterHelper<T>[] Properties;
         }
 
-        public async Task RunAsync<T>(string fileName, IEnumerable<T> rows, bool showTitleRow = true, bool columnAutoFit = true)
+        public async Task CreateExcelFileAsync<T>(
+            string fileName,
+            IEnumerable<T> rows,
+            bool showTitleRow = false,
+            bool columnAutoFit = false,
+            string[]? titles = null,
+            string workPath = "work"
+        )
         {
-            var workPath = Path.Combine("work", Guid.NewGuid().ToString());
-            var workRelPath = Path.Combine(workPath, "_rels");
-            if (!Directory.Exists(workPath))
-                Directory.CreateDirectory(workPath);
+            var formatters = GetPropertiesCache<T>.Properties;
+            if (titles != null)
+            {
+                var i = 0;
+                foreach (var f in formatters)
+                {
+                    if (titles.Length > i)
+                        f.Name = titles[i++];
+                }
+            }
 
-            if (!Directory.Exists(workRelPath))
-                Directory.CreateDirectory(workRelPath);
-
-            if (File.Exists(fileName))
-                File.Delete(fileName);
-
+            var workPathRoot = Path.Combine(workPath, Guid.NewGuid().ToString());
+            var workRelPath = Path.Combine(workPathRoot, "_rels");
             try
             {
-                using (var fs = CreateStream(Path.Combine(workPath, "[Content_Types].xml")))
+                if (!Directory.Exists(workPathRoot))
+                    Directory.CreateDirectory(workPathRoot);
+
+                if (!Directory.Exists(workRelPath))
+                    Directory.CreateDirectory(workRelPath);
+
+                if (File.Exists(fileName))
+                    File.Delete(fileName);
+
+                using (var fs = CreateStream(Path.Combine(workPathRoot, "[Content_Types].xml")))
                     await fs.WriteAsync(_contentTypes);
                 using (var fs = CreateStream(Path.Combine(workRelPath, ".rels")))
                     await fs.WriteAsync(_rels);
-                using (var fs = CreateStream(Path.Combine(workPath, "book.xml")))
+                using (var fs = CreateStream(Path.Combine(workPathRoot, "book.xml")))
                     await fs.WriteAsync(_book);
                 using (var fs = CreateStream(Path.Combine(workRelPath, "book.xml.rels")))
                     await fs.WriteAsync(_bookRels);
-                using (var fs = CreateStream(Path.Combine(workPath, "styles.xml")))
+                using (var fs = CreateStream(Path.Combine(workPathRoot, "styles.xml")))
                     await fs.WriteAsync(_styles);
-                using (var fsSheet = CreateStream(Path.Combine(workPath, "sheet.xml")))
-                using (var fsString = CreateStream(Path.Combine(workPath, "strings.xml")))
+                using (var stream = CreateStream(Path.Combine(workPathRoot, "sheet.xml")))
+                using (var fsString = CreateStream(Path.Combine(workPathRoot, "strings.xml")))
                 {
                     Formatter.SharedStringsClear();
-                    CreateSheet(rows, fsSheet, showTitleRow, columnAutoFit);
+                    CreateSheet(formatters.AsSpan(), rows, stream, showTitleRow, columnAutoFit);
                     WriteSharedStrings(fsString, Formatter.SharedStrings);
                     Formatter.SharedStringsClear();
                 }
-#if DEBUG
-                ZipFile.CreateFromDirectory(workPath, fileName);
-#else
-#endif
+                ZipFile.CreateFromDirectory(workPathRoot, fileName);
             }
             catch
             {
@@ -146,25 +161,16 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             }
             finally
             {
-#if DEBUG
-#else
                 try
                 {
-                    Directory.Delete(workPath, true);
+                    if (Directory.Exists(workPathRoot))
+                        Directory.Delete(workPathRoot, true);
                 }
                 catch { }
-#endif
             }
         }
-
-        private static Stream CreateStream(string fileName)
-        {
-#if DEBUG
-            return new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
-#else
-            return new FakeStream();
-#endif
-        }
+        Stream CreateStream(string fileName)
+            => new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
 
         void CalcCellStringLength<T>(Span<FormatterHelper<T>> formatters, IEnumerable<T> rows)
         {
@@ -175,8 +181,8 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                     .Take(100)
                     .Select(r =>
                     {
-                        if (r == null || f.Formatter == null) return 0;
-                        var len = (int)f.Formatter(r, buffer);
+                        if (r == null || f.Writer == null) return 0;
+                        var len = (int)f.Writer(r, buffer);
                         buffer.Clear();
                         return len;
                     })
@@ -187,72 +193,69 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             }
         }
 
-        public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, bool showTitleRow, bool autoFitColumns)
+        void CreateSheet<T>(Span<FormatterHelper<T>> formatters, IEnumerable<T> rows, Stream stream, bool showTitleRow, bool autoFitColumns)
         {
-            var formatters = GetPropertiesCache<T>.Properties.AsSpan();
-            if (autoFitColumns)
-                CalcCellStringLength(formatters, rows);
-
-            fsSheet.Write(_sheetStart);
-            fsSheet.Write(_newLine);
+            stream.Write(_sheetStart);
+            stream.Write(_newLine);
 
             if (showTitleRow)
             {
-                fsSheet.Write(_frozenTitleRow);
-                fsSheet.Write(_newLine);
+                stream.Write(_frozenTitleRow);
+                stream.Write(_newLine);
             }
 
             using var writer = new ArrayPoolBufferWriter();
             if (autoFitColumns)
             {
+                CalcCellStringLength(formatters, rows);
                 var i = 0;
-                fsSheet.Write(_colStart);
+                stream.Write(_colStart);
                 foreach (var f in formatters)
                 {
                     ++i;
                     Encoding.UTF8.GetBytes(
                         @$"<col min=""{i}"" max =""{i}"" width =""{f.MaxLength:0.0}"" bestFit =""1"" customWidth =""1"" />",
                         writer);
-                    writer.CopyTo(fsSheet);
+                    writer.CopyTo(stream);
                 }
-                fsSheet.Write(_colEnd);
-                fsSheet.Write(_newLine);
+                stream.Write(_colEnd);
+                stream.Write(_newLine);
             }
 
-            fsSheet.Write(_dataStart);
-            fsSheet.Write(_newLine);
+            stream.Write(_dataStart);
+            stream.Write(_newLine);
 
             if (showTitleRow)
             {
-                fsSheet.Write(_rowStart);
+                stream.Write(_rowStart);
                 foreach (var f in formatters)
                 {
-                    Formatter.Serialize(f.Name, writer);
-                    writer.CopyTo(fsSheet);
+                    Formatter.Write(f.Name, writer);
+                    writer.CopyTo(stream);
                 }
-                fsSheet.Write(_rowEnd);
-                fsSheet.Write(_newLine);
+                stream.Write(_rowEnd);
+                stream.Write(_newLine);
             }
 
             foreach (var row in rows)
             {
                 if (row == null) continue;
-                fsSheet.Write(_rowStart);
+                stream.Write(_rowStart);
                 foreach (var f in formatters)
                 {
-                    f.Formatter(row, writer);
-                    writer.CopyTo(fsSheet);
+                    f.Writer(row, writer);
+                    writer.CopyTo(stream);
                 }
-                fsSheet.Write(_rowEnd);
-                fsSheet.Write(_newLine);
+                stream.Write(_rowEnd);
+                stream.Write(_newLine);
             }
-            fsSheet.Write(_dataEnd);
-            fsSheet.Write(_newLine);
-            fsSheet.Write(_sheetEnd);
-            fsSheet.Write(_newLine);
+            stream.Write(_dataEnd);
+            stream.Write(_newLine);
+            stream.Write(_sheetEnd);
+            stream.Write(_newLine);
         }
 
-        private void WriteSharedStrings(Stream stream, Dictionary<string, int> sharedStrings)
+        void WriteSharedStrings(Stream stream, Dictionary<string, int> sharedStrings)
         {
             stream.Write(_sstStart);
             stream.Write(_newLine);

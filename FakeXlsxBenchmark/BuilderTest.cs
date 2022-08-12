@@ -11,11 +11,12 @@ namespace FakeXlsxBenchmark
     [MemoryDiagnoser]
     public class BuilderTest
     {
+        readonly FakeExcel.Builder _builder = new();
         readonly FakeExcelBuilder.Reflection.Builder _builderRef = new();
         readonly FakeExcelBuilder.ExpressionTree.Builder _builderExp = new();
         readonly FakeExcelBuilder.ExpressionTreeOp.Builder _builderExpOp = new();
         readonly FakeExcelBuilder.ExpressionTreeOp2.Builder _builderExpOp2 = new();
-        List<User>? _users;
+        public List<User>? Users { get; set; }
         public BuilderTest()
         {
         }
@@ -62,43 +63,43 @@ namespace FakeXlsxBenchmark
                     //Console.WriteLine("User Created! Id={0}", u.Id);
                 });
 
-            _users = testUsers.Generate(N);
-            if(!Directory.Exists("test"))
+            Users = testUsers.Generate(N);
+            if (!Directory.Exists("test"))
                 Directory.CreateDirectory("test");
         }
 
         [Benchmark(Baseline = true)]
         public async Task ReflectionAsync()
         {
-            if (_users == null)
+            if (Users == null)
                 throw new ApplicationException("users is null");
             var fileName = @"test\Reflection.xlsx";
-            await _builderRef.RunAsync(fileName, _users);
+            await _builderRef.RunAsync(fileName, Users);
         }
 
         [Benchmark]
         public async Task ExpressionTreeAsync()
         {
-            if (_users == null)
+            if (Users == null)
                 throw new ApplicationException("users is null");
             var fileName = @"test\ExpressionTree.xlsx";
-            await _builderExp.RunAsync(fileName, _users);
+            await _builderExp.RunAsync(fileName, Users);
         }
         [Benchmark]
         public async Task ExpressionTreeOpAsync()
         {
-            if (_users == null)
+            if (Users == null)
                 throw new ApplicationException("users is null");
             var fileName = @"test\ExpressionTreeOp.xlsx";
-            await _builderExpOp.RunAsync(fileName, _users);
+            await _builderExpOp.RunAsync(fileName, Users);
         }
         [Benchmark]
         public async Task ExpressionTreeOp2Async()
         {
-            if (_users == null)
+            if (Users == null)
                 throw new ApplicationException("users is null");
             var fileName = @"test\ExpressionTreeOp2.xlsx";
-            await _builderExpOp2.RunAsync(fileName, _users);
+            await _builderExpOp2.RunAsync(fileName, Users);
         }
     }
 }

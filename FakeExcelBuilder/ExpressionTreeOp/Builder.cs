@@ -74,7 +74,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
         private const int COLUMN_WIDTH_MARGIN = 2;
 
         static readonly ConcurrentDictionary<Type, FormatterHelper[]> _dic = new();
-        public async Task RunAsync<T>(string fileName, IEnumerable<T> rows, bool writeTitle = true, bool columnAutoFit = true)
+        public async Task RunAsync<T>(string fileName, IEnumerable<T> rows, bool showTitleRow = true, bool columnAutoFit = true)
         {
             var workPath = Path.Combine("work", Guid.NewGuid().ToString());
             var workRelPath = Path.Combine(workPath, "_rels");
@@ -102,7 +102,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
                 using (var fsSheet = CreateStream(Path.Combine(workPath, "sheet.xml")))
                 using (var fsString = CreateStream(Path.Combine(workPath, "strings.xml")))
                 {
-                    CreateSheet(rows, fsSheet, fsString, writeTitle, columnAutoFit);
+                    CreateSheet(rows, fsSheet, fsString, showTitleRow, columnAutoFit);
                 }
 #if DEBUG
                 ZipFile.CreateFromDirectory(workPath, fileName);
@@ -145,7 +145,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
                     .ToArray()
             );
 
-        public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, Stream fsString, bool writeTitle, bool autoFitColumns)
+        public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, Stream fsString, bool showTitleRow, bool autoFitColumns)
         {
             using var writer = new ArrayPoolBufferWriter(1024);
             ColumnFormatter.SharedStringsClear();
@@ -166,7 +166,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
                 writer.Clear();
             }
 
-            WriteHeader(formatters, fsSheet, writeTitle, autoFitColumns);
+            WriteHeader(formatters, fsSheet, showTitleRow, autoFitColumns);
 
             foreach (var row in rows)
             {
@@ -190,7 +190,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
             ColumnFormatter.SharedStringsClear();
         }
 
-        void WriteHeader(Span<FormatterHelper> formatters, Stream fsSheet, bool writeTitle, bool autoFitColumns)
+        void WriteHeader(Span<FormatterHelper> formatters, Stream fsSheet, bool showTitleRow, bool autoFitColumns)
         {
             using var writer = new ArrayPoolBufferWriter(1024);
             Encoding.UTF8.GetBytes(
@@ -198,7 +198,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
                 , writer);
             writer.Write(_newLine);
 
-            if (writeTitle)
+            if (showTitleRow)
             {
                 writer.Write(_frozenTitleRow);
                 writer.Write(_newLine);
@@ -222,7 +222,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp
             Encoding.UTF8.GetBytes("<sheetData>", writer);
             writer.Write(_newLine);
 
-            if (writeTitle)
+            if (showTitleRow)
             {
                 writer.Write(_rowTag1);
                 foreach (var f in formatters)

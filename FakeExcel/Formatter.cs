@@ -1,7 +1,7 @@
 ﻿using System.Buffers;
 using System.Text;
 
-namespace FakeExcelBuilder.ExpressionTreeOp2
+namespace FakeExcel
 {
     public static class Formatter
     {
@@ -23,7 +23,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             return 0;
         }
 
-        public static long Serialize(string value, IBufferWriter<byte> writer)
+        public static long Write(string value, IBufferWriter<byte> writer)
         {
             if (string.IsNullOrEmpty(value)) WriteEmpty(writer);
 
@@ -55,14 +55,14 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             return _index++;
         }
 
-        public static long Serialize(object value, IBufferWriter<byte> writer)
-            => Serialize(value?.ToString() ?? "", writer);
-        public static long Serialize(Guid value, IBufferWriter<byte> writer)
-            => Serialize(value.ToString(), writer);
-        public static long Serialize(Enum value, IBufferWriter<byte> writer)
-            => Serialize(value.ToString(), writer);
+        public static long Write(object? value, IBufferWriter<byte> writer)
+            => Write(value?.ToString() ?? "", writer);
+        public static long Write(Guid value, IBufferWriter<byte> writer)
+            => Write(value.ToString(), writer);
+        public static long Write(Enum value, IBufferWriter<byte> writer)
+            => Write(value.ToString(), writer);
 
-        public static long Serialize(bool? value, IBufferWriter<byte> writer)
+        public static long Write(bool? value, IBufferWriter<byte> writer)
         {
             if (value == null) return WriteEmpty(writer);
             var s = Convert.ToString(value);
@@ -82,20 +82,20 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             return chars.Length;
         }
 
-        public static long Serialize(int value, IBufferWriter<byte> writer)
+        public static long Write(int value, IBufferWriter<byte> writer)
             => WriterNumber(Convert.ToString(value), writer);
-        public static long Serialize(long value, IBufferWriter<byte> writer)
+        public static long Write(long value, IBufferWriter<byte> writer)
             => WriterNumber(Convert.ToString(value), writer);
-        public static long Serialize(float value, IBufferWriter<byte> writer)
+        public static long Write(float value, IBufferWriter<byte> writer)
             => WriterNumber(Convert.ToString(value), writer);
-        public static long Serialize(double value, IBufferWriter<byte> writer)
+        public static long Write(double value, IBufferWriter<byte> writer)
             => WriterNumber(Convert.ToString(value), writer);
-        public static long Serialize(decimal value, IBufferWriter<byte> writer)
+        public static long Write(decimal value, IBufferWriter<byte> writer)
             => WriterNumber(Convert.ToString(value), writer);
 
         const int LEN_DATE = 10;
         const int LEN_DATETIME = 18;
-        public static long Serialize(DateTime value, IBufferWriter<byte> writer)
+        public static long Write(DateTime value, IBufferWriter<byte> writer)
         {
             var d = value;
             if (d == DateTime.MinValue) WriteEmpty(writer);
@@ -108,14 +108,14 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             return LEN_DATETIME;
         }
 
-        public static long Serialize(DateOnly? value, IBufferWriter<byte> writer)
+        public static long Write(DateOnly? value, IBufferWriter<byte> writer)
         {
             if (value == null) WriteEmpty(writer);
             Encoding.UTF8.GetBytes(@$"<c t=""d"" s=""{XF_DATE}""><v>{value:yyyy-MM-ddTHH:mm:ss}</v></c>", writer);
             return LEN_DATE;
         }
 
-        public static long Serialize(TimeOnly? value, IBufferWriter<byte> writer)
+        public static long Write(TimeOnly? value, IBufferWriter<byte> writer)
         {
             if (value == null) WriteEmpty(writer);
             Encoding.UTF8.GetBytes(@$"<c t=""d"" s=""{XF_DATETIME}""><v>{value:yyyy-MM-ddTHH:mm:ss}</v></c>", writer);

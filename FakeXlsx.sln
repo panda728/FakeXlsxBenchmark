@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.2.32616.157
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeXlsxBenchmark", "FakeXlsxBenchmark\FakeXlsxBenchmark.csproj", "{7EAA9BCF-684B-42F5-B8D2-AFBA91BB0EEA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeXlsxBenchmark", "FakeXlsxBenchmark\FakeXlsxBenchmark.csproj", "{7EAA9BCF-684B-42F5-B8D2-AFBA91BB0EEA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeExcelBuilder", "FakeExcelBuilder\FakeExcelBuilder.csproj", "{DD9A8245-4E40-4AD1-918D-5D4F779F298B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeExcelBuilder", "FakeExcelBuilder\FakeExcelBuilder.csproj", "{DD9A8245-4E40-4AD1-918D-5D4F779F298B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeExcel", "FakeExcel\FakeExcel.csproj", "{DB5AB1B2-E1FF-42B4-AFC0-9606C956012C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{DD9A8245-4E40-4AD1-918D-5D4F779F298B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DD9A8245-4E40-4AD1-918D-5D4F779F298B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DD9A8245-4E40-4AD1-918D-5D4F779F298B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB5AB1B2-E1FF-42B4-AFC0-9606C956012C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB5AB1B2-E1FF-42B4-AFC0-9606C956012C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB5AB1B2-E1FF-42B4-AFC0-9606C956012C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB5AB1B2-E1FF-42B4-AFC0-9606C956012C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

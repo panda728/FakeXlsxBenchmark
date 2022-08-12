@@ -71,7 +71,7 @@ namespace FakeExcelBuilder.Reflection
         private const int COLUMN_WIDTH_MARGIN = 2;
 
         static readonly ConcurrentDictionary<Type, PropCache[]> _dic = new();
-        public async Task RunAsync<T>(string fileName, IEnumerable<T> rows, bool writeTitle = true, bool columnAutoFit = true)
+        public async Task RunAsync<T>(string fileName, IEnumerable<T> rows, bool showTitleRow = true, bool columnAutoFit = true)
         {
             var workPath = Path.Combine("work", Guid.NewGuid().ToString());
             var workRelPath = Path.Combine(workPath, "_rels");
@@ -97,7 +97,7 @@ namespace FakeExcelBuilder.Reflection
                 using (var fs = CreateStream(Path.Combine(workPath, "styles.xml")))
                     await fs.WriteAsync(_styles);
                 using (var fs = CreateStream(Path.Combine(workPath, "sheet.xml")))
-                    CreateSheet(fs, rows, writeTitle, columnAutoFit);
+                    CreateSheet(fs, rows, showTitleRow, columnAutoFit);
                 using (var fs = CreateStream(Path.Combine(workPath, "strings.xml")))
                     CreateStrings(fs);
 #if DEBUG
@@ -156,7 +156,7 @@ namespace FakeExcelBuilder.Reflection
                     .ToArray()
             );
 
-        private void CreateSheet<T>(Stream stream, IEnumerable<T> rows, bool writeTitle, bool columnAutoFit)
+        private void CreateSheet<T>(Stream stream, IEnumerable<T> rows, bool showTitleRow, bool columnAutoFit)
         {
             SharedStringsClear();
             using var writer = new ArrayPoolBufferWriter(1024);
@@ -168,7 +168,7 @@ namespace FakeExcelBuilder.Reflection
                 , writer);
             writer.Write(_newLine);
 
-            if (writeTitle)
+            if (showTitleRow)
             {
                 Encoding.UTF8.GetBytes(_frozenTitleRow, writer);
                 writer.Write(_newLine);
@@ -210,7 +210,7 @@ namespace FakeExcelBuilder.Reflection
             Encoding.UTF8.GetBytes("<sheetData>", writer);
             writer.Write(_newLine);
 
-            if (writeTitle)
+            if (showTitleRow)
             {
                 writer.Write(_rowTag1);
                 foreach (var p in properties)
