@@ -11,7 +11,6 @@ namespace FakeExcel
             Name = name;
             Writer = (i, w) => FormatterHelperExtention.Write(i, w);
             Index = 0;
-            MaxLength = 0;
         }
 
         public FormatterHelper(PropertyInfo p, int i)
@@ -19,13 +18,11 @@ namespace FakeExcel
             Name = p.Name;
             Writer = p.GenerateFormatter<T>();
             Index = i;
-            MaxLength = 0;
         }
 
         public int Index { get; init; }
         public string Name { get; set; }
         public Func<T, IBufferWriter<byte>, long> Writer { get; init; }
-        public int MaxLength { get; set; }
     }
 
     public static class FormatterHelperExtention

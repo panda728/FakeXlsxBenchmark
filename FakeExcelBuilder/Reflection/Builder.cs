@@ -75,14 +75,13 @@ namespace FakeExcelBuilder.Reflection
         {
             var workPath = Path.Combine("work", Guid.NewGuid().ToString());
             var workRelPath = Path.Combine(workPath, "_rels");
+#if DEBUG
             if (!Directory.Exists(workPath))
                 Directory.CreateDirectory(workPath);
 
             if (!Directory.Exists(workRelPath))
                 Directory.CreateDirectory(workRelPath);
-
-            if (File.Exists(fileName))
-                File.Delete(fileName);
+#endif
 
             try
             {
@@ -101,6 +100,8 @@ namespace FakeExcelBuilder.Reflection
                 using (var fs = CreateStream(Path.Combine(workPath, "strings.xml")))
                     CreateStrings(fs);
 #if DEBUG
+                if (File.Exists(fileName))
+                    File.Delete(fileName);
                 ZipFile.CreateFromDirectory(workPath, fileName);
 #else
 #endif
@@ -112,12 +113,12 @@ namespace FakeExcelBuilder.Reflection
             finally
             {
 #if DEBUG
-#else
                 try
                 {
                     Directory.Delete(workPath, true);
                 }
                 catch { }
+#else
 #endif
             }
         }

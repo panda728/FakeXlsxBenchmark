@@ -148,7 +148,7 @@ namespace FakeExcel
                 {
                     Formatter.SharedStringsClear();
                     CreateSheet(formatters.AsSpan(), rows, stream, showTitleRow, columnAutoFit);
-                    WriteSharedStrings(fsString, Formatter.SharedStrings);
+                    WriteSharedStrings(fsString);
                     Formatter.SharedStringsClear();
                 }
 
@@ -174,25 +174,39 @@ namespace FakeExcel
         Stream CreateStream(string fileName)
             => new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
 
-        void CalcCellStringLength<T>(Span<FormatterHelper<T>> formatters, IEnumerable<T> rows)
+        void WriteCellWidth<T>(Span<FormatterHelper<T>> formatters, IEnumerable<T> rows, Stream stream)
         {
-            using var buffer = new ArrayPoolBufferWriter<byte>();
+            var i = 0;
+            stream.Write(_colStart);
+
+            using var writer = new ArrayPoolBufferWriter<byte>();
             foreach (var f in formatters)
             {
-                var maxLength = rows
+                var max = rows
                     .Take(100)
                     .Select(r =>
                     {
-                        if (r == null || f.Writer == null) return 0;
-                        var len = (int)f.Writer(r, buffer);
-                        buffer.Clear();
+                        if (r == null || f.Writer == null)
+                            return 0;
+                        var len = (int)f.Writer(r, writer);
+                        writer.Clear();
                         return len;
                     })
                     .Max(x => x);
-                f.MaxLength = Math.Min(
-                    Math.Max(maxLength, f.Name.Length) + COLUMN_WIDTH_MARGIN,
+
+                var maxLength = Math.Min(
+                    Math.Max(max, f.Name.Length) + COLUMN_WIDTH_MARGIN,
                     COLUMN_WIDTH_MAX);
+
+                ++i;
+                Encoding.UTF8.GetBytes(
+                    @$"<col min=""{i}"" max =""{i}"" width =""{maxLength:0.0}"" bestFit =""1"" customWidth =""1"" />",
+                    writer);
+                stream.Write(writer.WrittenSpan);
+                writer.Clear();
             }
+            stream.Write(_colEnd);
+            stream.Write(_newLine);
         }
 
         void CreateSheet<T>(Span<FormatterHelper<T>> formatters, IEnumerable<T> rows, Stream stream, bool showTitleRow, bool autoFitColumns)
@@ -206,28 +220,13 @@ namespace FakeExcel
                 stream.Write(_newLine);
             }
 
-            using var writer = new ArrayPoolBufferWriter<byte>();
             if (autoFitColumns)
-            {
-                CalcCellStringLength(formatters, rows);
-                var i = 0;
-                stream.Write(_colStart);
-                foreach (var f in formatters)
-                {
-                    ++i;
-                    Encoding.UTF8.GetBytes(
-                        @$"<col min=""{i}"" max =""{i}"" width =""{f.MaxLength:0.0}"" bestFit =""1"" customWidth =""1"" />",
-                        writer);
-                    stream.Write(writer.WrittenSpan);
-                    writer.Clear();
-                }
-                stream.Write(_colEnd);
-                stream.Write(_newLine);
-            }
+                WriteCellWidth(formatters, rows, stream);
 
             stream.Write(_dataStart);
             stream.Write(_newLine);
 
+            using var writer = new ArrayPoolBufferWriter<byte>();
             if (showTitleRow)
             {
                 stream.Write(_rowStart);
@@ -260,20 +259,20 @@ namespace FakeExcel
             stream.Write(_newLine);
         }
 
-        void WriteSharedStrings(Stream stream, Dictionary<string, int> sharedStrings)
+        void WriteSharedStrings(Stream stream)
         {
             stream.Write(_sstStart);
             stream.Write(_newLine);
 
             using var writer = new ArrayPoolBufferWriter<byte>();
-            foreach (var s in sharedStrings)
+            foreach (var s in Formatter.SharedStrings)
             {
-                writer.Write(_siStart);
+                stream.Write(_siStart);
                 Encoding.UTF8.GetBytes(s.Key, writer);
-                writer.Write(_siEnd);
-                writer.Write(_newLine);
                 stream.Write(writer.WrittenSpan);
                 writer.Clear();
+                stream.Write(_siEnd);
+                stream.Write(_newLine);
             }
             stream.Write(_sstEnd);
             stream.Write(_newLine);
