@@ -124,12 +124,12 @@ namespace FakeExcel
             }
 
             var workPathRoot = Path.Combine(workPath, Guid.NewGuid().ToString());
-            var workRelPath = Path.Combine(workPathRoot, "_rels");
             try
             {
                 if (!Directory.Exists(workPathRoot))
                     Directory.CreateDirectory(workPathRoot);
 
+                var workRelPath = Path.Combine(workPathRoot, "_rels");
                 if (!Directory.Exists(workRelPath))
                     Directory.CreateDirectory(workRelPath);
 
@@ -170,6 +170,7 @@ namespace FakeExcel
                 catch { }
             }
         }
+
         Stream CreateStream(string fileName)
             => new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
 
