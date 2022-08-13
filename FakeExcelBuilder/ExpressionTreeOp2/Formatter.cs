@@ -32,7 +32,10 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             else
                 writer.Write(_colStartString);
 
-            var index = GetSharedStringIndex(value);
+            var index = SharedStrings.TryAdd(value, _index)
+                    ? _index++
+                    : SharedStrings[value];
+
             Encoding.UTF8.GetBytes(Convert.ToString(index), writer);
             writer.Write(_colEnd);
             return value.Length;
@@ -44,15 +47,6 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
         {
             _index = 0;
             SharedStrings.Clear();
-        }
-
-        static int GetSharedStringIndex(string s)
-        {
-            if (SharedStrings.ContainsKey(s))
-                return SharedStrings[s];
-
-            SharedStrings.Add(s, _index);
-            return _index++;
         }
 
         public static long Serialize(object value, IBufferWriter<byte> writer)

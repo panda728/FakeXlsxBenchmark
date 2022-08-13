@@ -107,15 +107,13 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
         {
             var workPath = Path.Combine("work", Guid.NewGuid().ToString());
             var workRelPath = Path.Combine(workPath, "_rels");
+#if DEBUG
             if (!Directory.Exists(workPath))
                 Directory.CreateDirectory(workPath);
 
             if (!Directory.Exists(workRelPath))
                 Directory.CreateDirectory(workRelPath);
-
-            if (File.Exists(fileName))
-                File.Delete(fileName);
-
+#endif
             try
             {
                 using (var fs = CreateStream(Path.Combine(workPath, "[Content_Types].xml")))
@@ -137,6 +135,8 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                     Formatter.SharedStringsClear();
                 }
 #if DEBUG
+                if (File.Exists(fileName))
+                    File.Delete(fileName);
                 ZipFile.CreateFromDirectory(workPath, fileName);
 #else
 #endif
@@ -148,12 +148,12 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             finally
             {
 #if DEBUG
-#else
                 try
                 {
                     Directory.Delete(workPath, true);
                 }
                 catch { }
+#else
 #endif
             }
         }
@@ -167,33 +167,43 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
 #endif
         }
 
-        void CalcCellStringLength<T>(Span<FormatterHelper<T>> formatters, IEnumerable<T> rows)
+        void WriteCellWidth<T>(Span<FormatterHelper<T>> formatters, IEnumerable<T> rows, Stream fsSheet)
         {
-            using var buffer = new ArrayPoolBufferWriter<byte>();
+            var i = 0;
+            fsSheet.Write(_colStart);
+
+            using var writer = new ArrayPoolBufferWriter<byte>();
             foreach (var f in formatters)
             {
-                var maxLength = rows
+                var max = rows
                     .Take(100)
                     .Select(r =>
                     {
-                        if (r == null || f.Formatter == null) return 0;
-                        var len = (int)f.Formatter(r, buffer);
-                        buffer.Clear();
+                        if (r == null || f.Formatter == null) 
+                            return 0;
+                        var len = (int)f.Formatter(r, writer);
+                        writer.Clear();
                         return len;
                     })
                     .Max(x => x);
-                f.MaxLength = Math.Min(
-                    Math.Max(maxLength, f.Name.Length) + COLUMN_WIDTH_MARGIN,
+
+                var maxLength = Math.Min(
+                    Math.Max(max, f.Name.Length) + COLUMN_WIDTH_MARGIN,
                     COLUMN_WIDTH_MAX);
+
+                ++i;
+                Encoding.UTF8.GetBytes(
+                    @$"<col min=""{i}"" max =""{i}"" width =""{maxLength:0.0}"" bestFit =""1"" customWidth =""1"" />",
+                    writer);
+                fsSheet.Write(writer.WrittenSpan);
+                writer.Clear();
             }
+            fsSheet.Write(_colEnd);
+            fsSheet.Write(_newLine);
         }
 
         public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, bool showTitleRow, bool autoFitColumns)
         {
-            var formatters = GetPropertiesCache<T>.Properties.AsSpan();
-            if (autoFitColumns)
-                CalcCellStringLength(formatters, rows);
-
             fsSheet.Write(_sheetStart);
             fsSheet.Write(_newLine);
 
@@ -203,27 +213,14 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                 fsSheet.Write(_newLine);
             }
 
-            using var writer = new ArrayPoolBufferWriter<byte>();
+            var formatters = GetPropertiesCache<T>.Properties.AsSpan();
             if (autoFitColumns)
-            {
-                var i = 0;
-                fsSheet.Write(_colStart);
-                foreach (var f in formatters)
-                {
-                    ++i;
-                    Encoding.UTF8.GetBytes(
-                        @$"<col min=""{i}"" max =""{i}"" width =""{f.MaxLength:0.0}"" bestFit =""1"" customWidth =""1"" />",
-                        writer);
-                    fsSheet.Write(writer.WrittenSpan);
-                    writer.Clear();
-                }
-                fsSheet.Write(_colEnd);
-                fsSheet.Write(_newLine);
-            }
+                WriteCellWidth(formatters, rows, fsSheet);
 
             fsSheet.Write(_dataStart);
             fsSheet.Write(_newLine);
 
+            using var writer = new ArrayPoolBufferWriter<byte>();
             if (showTitleRow)
             {
                 fsSheet.Write(_rowStart);

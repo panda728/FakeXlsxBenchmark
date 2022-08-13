@@ -78,15 +78,13 @@ namespace FakeExcelBuilder.ExpressionTreeOp
         {
             var workPath = Path.Combine("work", Guid.NewGuid().ToString());
             var workRelPath = Path.Combine(workPath, "_rels");
+#if DEBUG
             if (!Directory.Exists(workPath))
                 Directory.CreateDirectory(workPath);
 
             if (!Directory.Exists(workRelPath))
                 Directory.CreateDirectory(workRelPath);
-
-            if (File.Exists(fileName))
-                File.Delete(fileName);
-
+#endif
             try
             {
                 using (var fs = CreateStream(Path.Combine(workPath, "[Content_Types].xml")))
@@ -105,6 +103,8 @@ namespace FakeExcelBuilder.ExpressionTreeOp
                     CreateSheet(rows, fsSheet, fsString, showTitleRow, columnAutoFit);
                 }
 #if DEBUG
+                if (File.Exists(fileName))
+                    File.Delete(fileName);
                 ZipFile.CreateFromDirectory(workPath, fileName);
 #else
 #endif
@@ -116,12 +116,12 @@ namespace FakeExcelBuilder.ExpressionTreeOp
             finally
             {
 #if DEBUG
-#else
                 try
                 {
                     Directory.Delete(workPath, true);
                 }
                 catch { }
+#else
 #endif
             }
         }

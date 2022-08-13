@@ -75,15 +75,13 @@ namespace FakeExcelBuilder.ExpressionTree
         {
             var workPath = Path.Combine("work", Guid.NewGuid().ToString());
             var workRelPath = Path.Combine(workPath, "_rels");
+#if DEBUG
             if (!Directory.Exists(workPath))
                 Directory.CreateDirectory(workPath);
 
             if (!Directory.Exists(workRelPath))
                 Directory.CreateDirectory(workRelPath);
-
-            if (File.Exists(fileName))
-                File.Delete(fileName);
-
+#endif
             var tempPath = "Templete";
             var tempRelPath = Path.Combine(tempPath, "_rels");
 
@@ -104,6 +102,8 @@ namespace FakeExcelBuilder.ExpressionTree
                 using (var fs = CreateStream(Path.Combine(workPath, "strings.xml")))
                     CreateStrings(fs);
 #if DEBUG
+                if (File.Exists(fileName))
+                    File.Delete(fileName);
                 ZipFile.CreateFromDirectory(workPath, fileName);
 #else
 #endif
@@ -115,12 +115,12 @@ namespace FakeExcelBuilder.ExpressionTree
             finally
             {
 #if DEBUG
-#else
                 try
                 {
                     Directory.Delete(workPath, true);
                 }
                 catch { }
+#else
 #endif
             }
         }
