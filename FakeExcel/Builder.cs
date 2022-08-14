@@ -87,20 +87,21 @@ namespace FakeExcel
             static GetPropertiesCache()
             {
                 var type = typeof(T);
-                if (type.Namespace?.StartsWith("System") ?? true)
+                var name = type.FullName?.Split(".")?.FirstOrDefault() ?? "";
+                if (name == "System")
                 {
-                    Properties = new FormatterHelper<T>[] { new FormatterHelper<T>("value") };
+                    Properties = new CellWriterHelper<T>[] { new CellWriterHelper<T>("value") };
                     return;
                 }
 
-                Properties = typeof(T)
+                Properties = type
                     .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                    .AsParallel()
-                    .Select((p, i) => new FormatterHelper<T>(p, i))
-                    .OrderBy(p => p.Index)
-                    .ToArray();
+                .AsParallel()
+                .Select((p, i) => new CellWriterHelper<T>(p, i))
+                .OrderBy(p => p.Index)
+                .ToArray();
             }
-            public static readonly FormatterHelper<T>[] Properties;
+            public static readonly CellWriterHelper<T>[] Properties;
         }
 
         public void CreateExcelFile<T>(
@@ -132,10 +133,10 @@ namespace FakeExcel
                 using (var sheetStream = CreateStream(Path.Combine(workPathRoot, "sheet.xml")))
                 using (var stringsStream = CreateStream(Path.Combine(workPathRoot, "strings.xml")))
                 {
-                    Formatter.SharedStringsClear();
+                    CellWriter.SharedStringsClear();
                     CreateSheet(formatters.AsSpan(), rows, sheetStream, showTitleRow, columnAutoFit);
                     WriteSharedStrings(stringsStream);
-                    Formatter.SharedStringsClear();
+                    CellWriter.SharedStringsClear();
                 }
 
                 var workRelPath = Path.Combine(workPathRoot, "_rels");
@@ -181,7 +182,7 @@ namespace FakeExcel
             => new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
 
         void CreateSheet<T>(
-            Span<FormatterHelper<T>> formatters,
+            Span<CellWriterHelper<T>> formatters,
             IEnumerable<T> rows,
             Stream stream,
             bool showTitleRow,
@@ -209,7 +210,7 @@ namespace FakeExcel
                 stream.Write(_rowStart);
                 foreach (var f in formatters)
                 {
-                    Formatter.Write(f.Name, writer);
+                    CellWriter.Write(f.Name, writer);
                     stream.Write(writer.WrittenSpan);
                     writer.Clear();
                 }
@@ -237,7 +238,7 @@ namespace FakeExcel
         }
 
         void WriteCellWidth<T>(
-            Span<FormatterHelper<T>> formatters,
+            Span<CellWriterHelper<T>> formatters,
             IEnumerable<T> rows,
             Stream stream
         )
@@ -262,7 +263,7 @@ namespace FakeExcel
         }
 
         int GetMaxLength<T>(
-            FormatterHelper<T> f,
+            CellWriterHelper<T> f,
             IEnumerable<T> rows,
             ArrayPoolBufferWriter<byte> writer
         )
@@ -287,7 +288,7 @@ namespace FakeExcel
             stream.Write(_newLine);
 
             using var writer = new ArrayPoolBufferWriter<byte>();
-            foreach (var s in Formatter.SharedStrings.Keys)
+            foreach (var s in CellWriter.SharedStrings.Keys)
             {
                 stream.Write(_siStart);
 

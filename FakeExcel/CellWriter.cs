@@ -3,7 +3,7 @@ using System.Text;
 
 namespace FakeExcel
 {
-    public static class Formatter
+    public static class CellWriter
     {
         //private const int XF_NORMAL = 0;
         const int XF_WRAP_TEXT = 1;
