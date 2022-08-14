@@ -17,6 +17,16 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
         static readonly byte[] _colStartString = Encoding.UTF8.GetBytes(@$"<c t=""s""><v>");
         static readonly byte[] _colEnd = Encoding.UTF8.GetBytes(@"</v></c>");
 
+        static int _index = 0;
+ 
+        public static Dictionary<string, int> SharedStrings { get; } = new();
+
+        public static void SharedStringsClear()
+        {
+            _index = 0;
+            SharedStrings.Clear();
+        }
+
         public static long WriteEmpty(IBufferWriter<byte> writer)
         {
             writer.Write(_emptyColumn);
@@ -38,15 +48,8 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
 
             Encoding.UTF8.GetBytes(Convert.ToString(index), writer);
             writer.Write(_colEnd);
-            return value.Length;
-        }
 
-        static int _index = 0;
-        public static Dictionary<string, int> SharedStrings { get; } = new();
-        public static void SharedStringsClear()
-        {
-            _index = 0;
-            SharedStrings.Clear();
+            return value.Length;
         }
 
         public static long Serialize(object value, IBufferWriter<byte> writer)

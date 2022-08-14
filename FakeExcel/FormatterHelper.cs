@@ -9,7 +9,7 @@ namespace FakeExcel
         public FormatterHelper(string name)
         {
             Name = name;
-            Writer = (i, w) => FormatterHelperExtention.Write(i, w);
+            Writer = (i, w) => Formatter.Write(i, w);
             Index = 0;
         }
 
@@ -22,7 +22,7 @@ namespace FakeExcel
 
         public int Index { get; init; }
         public string Name { get; set; }
-        public Func<T, IBufferWriter<byte>, long> Writer { get; init; }
+        public Func<T, IBufferWriter<byte>, int> Writer { get; init; }
     }
 
     public static class FormatterHelperExtention
@@ -30,7 +30,7 @@ namespace FakeExcel
         readonly static Type _objectType = typeof(object);
         readonly static Type _bufferWriter = typeof(IBufferWriter<byte>);
 
-        public static Func<T, IBufferWriter<byte>, long> GenerateFormatter<T>(this PropertyInfo p)
+        public static Func<T, IBufferWriter<byte>, int> GenerateFormatter<T>(this PropertyInfo p)
         {
             if (p.PropertyType.IsGenericType)
                 return (o, v) => Formatter.WriteEmpty(v);
@@ -53,13 +53,13 @@ namespace FakeExcel
                 || type == typeof(object);
         }
 
-        static Func<T, IBufferWriter<byte>, long> GenerateSupported<T>(this PropertyInfo propertyInfo)
+        static Func<T, IBufferWriter<byte>, int> GenerateSupported<T>(this PropertyInfo propertyInfo)
         {
             var method = typeof(Formatter).GetMethod("Write", new Type[] { propertyInfo.PropertyType, _bufferWriter });
             if (method == null || propertyInfo.DeclaringType == null)
                 return (o, v) => Formatter.WriteEmpty(v);
 
-            // Func<T, long, IBufferWriter<byte>> getCategoryId = (i,writer) => Formatter.Write(i.CategoryId, writer);
+            // Func<T, int, IBufferWriter<byte>> getCategoryId = (i,writer) => Formatter.Write(i.CategoryId, writer);
             var target = Expression.Parameter(propertyInfo.DeclaringType, "i");
             var property = Expression.PropertyOrField(target, propertyInfo.Name);
             var writer = Expression.Parameter(_bufferWriter, "w");
@@ -67,16 +67,16 @@ namespace FakeExcel
 
             var call = Expression.Call(method, ps);
             var lambda = Expression.Lambda(call, target, writer);
-            return (Func<T, IBufferWriter<byte>, long>)lambda.Compile();
+            return (Func<T, IBufferWriter<byte>, int>)lambda.Compile();
         }
 
-        static Func<T, IBufferWriter<byte>, long> GenerateObject<T>(this PropertyInfo propertyInfo)
+        static Func<T, IBufferWriter<byte>, int> GenerateObject<T>(this PropertyInfo propertyInfo)
         {
             var method = typeof(Formatter).GetMethod("Write", new Type[] { _objectType, _bufferWriter });
             if (method == null || propertyInfo.DeclaringType == null)
                 return (o, v) => Formatter.WriteEmpty(v);
 
-            // Func<T, long, IBufferWriter<byte>> getCategoryId = (i,writer) => Formatter.Write((object)(i.CategoryId), writer);
+            // Func<T, int, IBufferWriter<byte>> getCategoryId = (i,writer) => Formatter.Write((object)(i.CategoryId), writer);
             var target = Expression.Parameter(propertyInfo.DeclaringType, "i");
             var property = Expression.PropertyOrField(target, propertyInfo.Name);
             var propertyConv = Expression.Convert(property, _objectType);
@@ -85,10 +85,7 @@ namespace FakeExcel
             var ps = new Expression[] { propertyConv, writer };
             var call = Expression.Call(method, ps);
             var lambda = Expression.Lambda(call, target, writer);
-            return (Func<T, IBufferWriter<byte>, long>)lambda.Compile();
+            return (Func<T, IBufferWriter<byte>, int>)lambda.Compile();
         }
-
-        public static long Write(object? value, IBufferWriter<byte> writer)
-            => Formatter.Write(value, writer);
     }
 }

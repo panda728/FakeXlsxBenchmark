@@ -113,11 +113,11 @@ namespace FakeExcelBuilder.Reflection
             finally
             {
 #if DEBUG
-                try
-                {
-                    Directory.Delete(workPath, true);
-                }
-                catch { }
+                //try
+                //{
+                //    Directory.Delete(workPath, true);
+                //}
+                //catch { }
 #else
 #endif
             }

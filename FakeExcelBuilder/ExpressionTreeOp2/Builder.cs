@@ -131,7 +131,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                 {
                     Formatter.SharedStringsClear();
                     CreateSheet(rows, fsSheet, showTitleRow, columnAutoFit);
-                    WriteSharedStrings(fsString, Formatter.SharedStrings);
+                    WriteSharedStrings(fsString);
                     Formatter.SharedStringsClear();
                 }
 #if DEBUG
@@ -148,11 +148,11 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             finally
             {
 #if DEBUG
-                try
-                {
-                    Directory.Delete(workPath, true);
-                }
-                catch { }
+                //try
+                //{
+                //    Directory.Delete(workPath, true);
+                //}
+                //catch { }
 #else
 #endif
             }
@@ -175,31 +175,30 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             using var writer = new ArrayPoolBufferWriter<byte>();
             foreach (var f in formatters)
             {
-                var max = rows
-                    .Take(100)
-                    .Select(r =>
-                    {
-                        if (r == null || f.Formatter == null) 
-                            return 0;
-                        var len = (int)f.Formatter(r, writer);
-                        writer.Clear();
-                        return len;
-                    })
-                    .Max(x => x);
-
-                var maxLength = Math.Min(
-                    Math.Max(max, f.Name.Length) + COLUMN_WIDTH_MARGIN,
-                    COLUMN_WIDTH_MAX);
-
+                var maxLength = GetMaxLength(f, rows, writer);
                 ++i;
                 Encoding.UTF8.GetBytes(
                     @$"<col min=""{i}"" max =""{i}"" width =""{maxLength:0.0}"" bestFit =""1"" customWidth =""1"" />",
                     writer);
                 fsSheet.Write(writer.WrittenSpan);
                 writer.Clear();
+                fsSheet.Write(_newLine);
             }
             fsSheet.Write(_colEnd);
             fsSheet.Write(_newLine);
+        }
+
+        private int GetMaxLength<T>(FormatterHelper<T> f, IEnumerable<T> rows, ArrayPoolBufferWriter<byte> writer)
+        {
+            var max = rows
+                .Take(100)
+                .Select(r => f?.Formatter(r, writer) ?? 0)
+                .Max(x => x);
+            writer.Clear();
+
+            return Math.Min(
+                Math.Max((int)max, f.Name.Length) + COLUMN_WIDTH_MARGIN,
+                COLUMN_WIDTH_MAX);
         }
 
         public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, bool showTitleRow, bool autoFitColumns)
@@ -253,16 +252,16 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             fsSheet.Write(_newLine);
         }
 
-        private void WriteSharedStrings(Stream stream, Dictionary<string, int> sharedStrings)
+        private void WriteSharedStrings(Stream stream)
         {
             stream.Write(_sstStart);
             stream.Write(_newLine);
 
             using var writer = new ArrayBufferWriter();
-            foreach (var s in sharedStrings)
+            foreach (var s in Formatter.SharedStrings.Keys)
             {
                 stream.Write(_siStart);
-                Encoding.UTF8.GetBytes(s.Key, writer);
+                Encoding.UTF8.GetBytes(s, writer);
                 writer.CopyTo(stream);
                 stream.Write(_siEnd);
                 stream.Write(_newLine);
