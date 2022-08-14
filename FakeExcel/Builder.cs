@@ -191,32 +191,30 @@ namespace FakeExcel
             using var writer = new ArrayPoolBufferWriter<byte>();
             if (showTitleRow)
             {
-                stream.Write(_rowStart);
+                writer.Write(_rowStart);
                 foreach (var f in formatters)
                 {
                     CellWriter.Write(
                         titles.Length > f.Index ? titles[f.Index] : f.Name,
                         writer
                     );
-                    stream.Write(writer.WrittenSpan);
-                    writer.Clear();
                 }
-                stream.Write(_rowEnd);
+                writer.Write(_rowEnd);
+
+                stream.Write(writer.WrittenSpan);
+                writer.Clear();
             }
 
             foreach (var row in rows)
             {
                 if (row == null) continue;
-                stream.Write(_rowStart);
-
+                writer.Write(_rowStart);
                 foreach (var f in formatters)
-                {
                     f.Writer(row, writer);
-                    stream.Write(writer.WrittenSpan);
-                    writer.Clear();
-                }
+                writer.Write(_rowEnd);
 
-                stream.Write(_rowEnd);
+                stream.Write(writer.WrittenSpan);
+                writer.Clear();
             }
 
             stream.Write(_dataEnd);

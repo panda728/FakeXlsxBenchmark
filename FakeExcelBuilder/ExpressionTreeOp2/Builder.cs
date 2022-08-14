@@ -243,9 +243,9 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                 foreach (var f in formatters)
                 {
                     f.Formatter(row, writer);
-                    fsSheet.Write(writer.WrittenSpan);
-                    writer.Clear();
                 }
+                fsSheet.Write(writer.WrittenSpan);
+                writer.Clear();
                 fsSheet.Write(_rowEnd);
                 fsSheet.Write(_newLine);
             }
