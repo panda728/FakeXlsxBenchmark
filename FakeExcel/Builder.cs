@@ -181,10 +181,10 @@ namespace FakeExcel
             => new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
 
         void CreateSheet<T>(
-            Span<FormatterHelper<T>> formatters, 
-            IEnumerable<T> rows, 
-            Stream stream, 
-            bool showTitleRow, 
+            Span<FormatterHelper<T>> formatters,
+            IEnumerable<T> rows,
+            Stream stream,
+            bool showTitleRow,
             bool autoFitColumns
         )
         {
@@ -237,8 +237,8 @@ namespace FakeExcel
         }
 
         void WriteCellWidth<T>(
-            Span<FormatterHelper<T>> formatters, 
-            IEnumerable<T> rows, 
+            Span<FormatterHelper<T>> formatters,
+            IEnumerable<T> rows,
             Stream stream
         )
         {
@@ -261,21 +261,24 @@ namespace FakeExcel
             stream.Write(_newLine);
         }
 
-        private int GetMaxLength<T>(
-            FormatterHelper<T> f, 
-            IEnumerable<T> rows, 
+        int GetMaxLength<T>(
+            FormatterHelper<T> f,
+            IEnumerable<T> rows,
             ArrayPoolBufferWriter<byte> writer
         )
         {
             var max = rows
                 .Take(100)
-                .Select(r => f?.Writer(r, writer) ?? 0)
+                .Select(r =>
+                {
+                    var len = f?.Writer(r, writer) ?? 0;
+                    writer.Clear();
+                    return len;
+                })
                 .Max(x => x);
-            writer.Clear();
 
-            return Math.Min(
-                Math.Max(max, f.Name.Length) + COLUMN_WIDTH_MARGIN,
-                COLUMN_WIDTH_MAX);
+            var lenMax = Math.Max(max, f.Name.Length) + COLUMN_WIDTH_MARGIN;
+            return Math.Min(lenMax, COLUMN_WIDTH_MAX);
         }
 
         void WriteSharedStrings(Stream stream)

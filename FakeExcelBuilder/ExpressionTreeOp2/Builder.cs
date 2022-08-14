@@ -192,13 +192,16 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
         {
             var max = rows
                 .Take(100)
-                .Select(r => f?.Formatter(r, writer) ?? 0)
+                .Select(r =>
+                {
+                    var len = f?.Formatter(r, writer) ?? 0;
+                    writer.Clear();
+                    return len;
+                })
                 .Max(x => x);
-            writer.Clear();
 
-            return Math.Min(
-                Math.Max((int)max, f.Name.Length) + COLUMN_WIDTH_MARGIN,
-                COLUMN_WIDTH_MAX);
+            var lenMax = (int)Math.Max(max, f.Name.Length) + COLUMN_WIDTH_MARGIN;
+            return Math.Min(lenMax, COLUMN_WIDTH_MAX);
         }
 
         public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, bool showTitleRow, bool autoFitColumns)

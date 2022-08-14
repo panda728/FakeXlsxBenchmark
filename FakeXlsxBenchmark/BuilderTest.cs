@@ -11,7 +11,6 @@ namespace FakeXlsxBenchmark
     [MemoryDiagnoser]
     public class BuilderTest
     {
-        readonly FakeExcel.Builder _builder = new();
         readonly FakeExcelBuilder.Reflection.Builder _builderRef = new();
         readonly FakeExcelBuilder.ExpressionTree.Builder _builderExp = new();
         readonly FakeExcelBuilder.ExpressionTreeOp.Builder _builderExpOp = new();
@@ -30,6 +29,7 @@ namespace FakeXlsxBenchmark
             //_builderRef.Compile(typeof(User));
             //_builderExp.Compile(typeof(User));
             //_builderExpOp.Compile(typeof(User));
+            //_builderExpOp2.Compile<User>();
 
             Randomizer.Seed = new Random(8675309);
 
