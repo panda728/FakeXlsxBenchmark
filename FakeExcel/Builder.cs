@@ -78,8 +78,8 @@ namespace FakeExcel
         readonly byte[] _siStart = Encoding.UTF8.GetBytes("<si><t>");
         readonly byte[] _siEnd = Encoding.UTF8.GetBytes("</t></si>");
 
-        private const int COLUMN_WIDTH_MAX = 100;
-        private const int COLUMN_WIDTH_MARGIN = 2;
+        const int COLUMN_WIDTH_MAX = 100;
+        const int COLUMN_WIDTH_MARGIN = 2;
 
         static class GetPropertiesCache<T>
         {
