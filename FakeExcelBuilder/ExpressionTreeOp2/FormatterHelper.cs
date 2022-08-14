@@ -24,6 +24,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
     {
         readonly static Type _objectType = typeof(object);
         readonly static Type _bufferWriter = typeof(IBufferWriter<byte>);
+        readonly static ParameterExpression _writerParam = Expression.Parameter(_bufferWriter, "w");
 
         public static Func<T, IBufferWriter<byte>, long> GenerateFormatter<T>(this PropertyInfo p)
         {
@@ -57,11 +58,10 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             // Func<T, long, IBufferWriter<byte>> getCategoryId = (i,writer) => Formatter.Serialize(i.CategoryId, writer);
             var target = Expression.Parameter(propertyInfo.DeclaringType, "i");
             var property = Expression.PropertyOrField(target, propertyInfo.Name);
-            var writer = Expression.Parameter(_bufferWriter, "w");
-            var ps = new Expression[] { property, writer };
+            var ps = new Expression[] { property, _writerParam };
 
             var call = Expression.Call(method, ps);
-            var lambda = Expression.Lambda(call, target, writer);
+            var lambda = Expression.Lambda(call, target, _writerParam);
             return (Func<T, IBufferWriter<byte>, long>)lambda.Compile();
         }
 
@@ -75,11 +75,10 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             var target = Expression.Parameter(propertyInfo.DeclaringType, "i");
             var property = Expression.PropertyOrField(target, propertyInfo.Name);
             var propertyConv = Expression.Convert(property, _objectType);
-            var writer = Expression.Parameter(_bufferWriter, "w");
 
-            var ps = new Expression[] { propertyConv, writer };
+            var ps = new Expression[] { propertyConv, _writerParam };
             var call = Expression.Call(method, ps);
-            var lambda = Expression.Lambda(call, target, writer);
+            var lambda = Expression.Lambda(call, target, _writerParam);
             return (Func<T, IBufferWriter<byte>, long>)lambda.Compile();
         }
     }
