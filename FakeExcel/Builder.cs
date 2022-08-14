@@ -57,7 +57,6 @@ namespace FakeExcel
 </cellXfs>
 </styleSheet>");
 
-        readonly byte[] _newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
         readonly byte[] _rowStart = Encoding.UTF8.GetBytes("<row>");
         readonly byte[] _rowEnd = Encoding.UTF8.GetBytes("</row>");
         readonly byte[] _colStart = Encoding.UTF8.GetBytes("<cols>");
@@ -113,17 +112,6 @@ namespace FakeExcel
             string workPath = "work"
         )
         {
-            var formatters = GetPropertiesCache<T>.Properties;
-            if (titles != null)
-            {
-                var i = 0;
-                foreach (var f in formatters)
-                {
-                    if (titles.Length > i)
-                        f.Name = titles[i++];
-                }
-            }
-
             var workPathRoot = Path.Combine(workPath, Guid.NewGuid().ToString());
             try
             {
@@ -134,7 +122,7 @@ namespace FakeExcel
                 using (var stringsStream = CreateStream(Path.Combine(workPathRoot, "strings.xml")))
                 {
                     CellWriter.SharedStringsClear();
-                    CreateSheet(formatters.AsSpan(), rows, sheetStream, showTitleRow, columnAutoFit);
+                    CreateSheet(rows, sheetStream, showTitleRow, columnAutoFit, titles ?? Array.Empty<string>());
                     WriteSharedStrings(stringsStream);
                     CellWriter.SharedStringsClear();
                 }
@@ -182,27 +170,23 @@ namespace FakeExcel
             => new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
 
         void CreateSheet<T>(
-            Span<CellWriterHelper<T>> formatters,
             IEnumerable<T> rows,
             Stream stream,
             bool showTitleRow,
-            bool autoFitColumns
+            bool autoFitColumns,
+            string[] titles
         )
         {
             stream.Write(_sheetStart);
-            stream.Write(_newLine);
 
             if (showTitleRow)
-            {
                 stream.Write(_frozenTitleRow);
-                stream.Write(_newLine);
-            }
 
+            var formatters = GetPropertiesCache<T>.Properties.AsSpan();
             if (autoFitColumns)
                 WriteCellWidth(formatters, rows, stream);
 
             stream.Write(_dataStart);
-            stream.Write(_newLine);
 
             using var writer = new ArrayPoolBufferWriter<byte>();
             if (showTitleRow)
@@ -210,31 +194,33 @@ namespace FakeExcel
                 stream.Write(_rowStart);
                 foreach (var f in formatters)
                 {
-                    CellWriter.Write(f.Name, writer);
+                    CellWriter.Write(
+                        titles.Length > f.Index ? titles[f.Index] : f.Name,
+                        writer
+                    );
                     stream.Write(writer.WrittenSpan);
                     writer.Clear();
                 }
                 stream.Write(_rowEnd);
-                stream.Write(_newLine);
             }
 
             foreach (var row in rows)
             {
                 if (row == null) continue;
                 stream.Write(_rowStart);
+
                 foreach (var f in formatters)
                 {
                     f.Writer(row, writer);
                     stream.Write(writer.WrittenSpan);
                     writer.Clear();
                 }
+
                 stream.Write(_rowEnd);
-                stream.Write(_newLine);
             }
+
             stream.Write(_dataEnd);
-            stream.Write(_newLine);
             stream.Write(_sheetEnd);
-            stream.Write(_newLine);
         }
 
         void WriteCellWidth<T>(
@@ -249,17 +235,15 @@ namespace FakeExcel
             using var writer = new ArrayPoolBufferWriter<byte>();
             foreach (var f in formatters)
             {
-                var maxLength = GetMaxLength(f, rows, writer);
                 ++i;
+                var maxLength = GetMaxLength(f, rows, writer);
                 Encoding.UTF8.GetBytes(
                     @$"<col min=""{i}"" max =""{i}"" width =""{maxLength:0.0}"" bestFit =""1"" customWidth =""1"" />",
                     writer);
                 stream.Write(writer.WrittenSpan);
                 writer.Clear();
-                stream.Write(_newLine);
             }
             stream.Write(_colEnd);
-            stream.Write(_newLine);
         }
 
         int GetMaxLength<T>(
@@ -285,7 +269,6 @@ namespace FakeExcel
         void WriteSharedStrings(Stream stream)
         {
             stream.Write(_sstStart);
-            stream.Write(_newLine);
 
             using var writer = new ArrayPoolBufferWriter<byte>();
             foreach (var s in CellWriter.SharedStrings.Keys)
@@ -297,10 +280,9 @@ namespace FakeExcel
                 writer.Clear();
 
                 stream.Write(_siEnd);
-                stream.Write(_newLine);
             }
+
             stream.Write(_sstEnd);
-            stream.Write(_newLine);
         }
     }
 }
