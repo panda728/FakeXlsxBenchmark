@@ -95,10 +95,10 @@ namespace FakeExcel
 
                 Properties = type
                     .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                .AsParallel()
-                .Select((p, i) => new CellWriterHelper<T>(p, i))
-                .OrderBy(p => p.Index)
-                .ToArray();
+                    .AsParallel()
+                    .Select((p, i) => new CellWriterHelper<T>(p, i))
+                    .OrderBy(p => p.Index)
+                    .ToArray();
             }
             public static readonly CellWriterHelper<T>[] Properties;
         }
