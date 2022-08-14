@@ -11,20 +11,22 @@ https://gist.github.com/iso2022jp/721df3095f4df512bfe2327503ea1119
 
 BenchmarkDotNet=v0.13.1, OS=Windows 10.0.22000
 Intel Core i7-10610U CPU 1.80GHz, 1 CPU, 8 logical and 4 physical cores
-.NET SDK=6.0.301
-  [Host]     : .NET 6.0.6 (6.0.622.26707), X64 RyuJIT  [AttachedDebugger]
-  DefaultJob : .NET 6.0.6 (6.0.622.26707), X64 RyuJIT
+.NET SDK=6.0.400
+  [Host]   : .NET 6.0.8 (6.0.822.36306), X64 RyuJIT  [AttachedDebugger]
+  ShortRun : .NET 6.0.8 (6.0.822.36306), X64 RyuJIT
 
+Job=ShortRun  IterationCount=3  LaunchCount=1
+WarmupCount=3
 
-|                 Method |      N |       Mean |      Error |     StdDev |     Median | Ratio | RatioSD |      Gen 0 |     Gen 1 |  Allocated |
-|----------------------- |------- |-----------:|-----------:|-----------:|-----------:|------:|--------:|-----------:|----------:|-----------:|
-|        ReflectionAsync |   1000 |   6.639 ms |  0.2987 ms |  0.8713 ms |   6.305 ms |  1.00 |    0.00 |   320.3125 |   23.4375 |   1,328 KB |
-|    ExpressionTreeAsync |   1000 |   5.764 ms |  0.0762 ms |  0.0713 ms |   5.733 ms |  0.88 |    0.06 |   320.3125 |   23.4375 |   1,328 KB |
-|  ExpressionTreeOpAsync |   1000 |   5.591 ms |  0.0629 ms |  0.0526 ms |   5.587 ms |  0.85 |    0.06 |   187.5000 |         - |     777 KB |
-| ExpressionTreeOp2Async |   1000 |   4.822 ms |  0.0960 ms |  0.0943 ms |   4.792 ms |  0.73 |    0.05 |   187.5000 |   39.0625 |     776 KB |
-|                        |        |            |            |            |            |       |         |            |           |            |
-|        ReflectionAsync | 100000 | 636.028 ms |  9.6319 ms |  8.5384 ms | 633.882 ms |  1.00 |    0.00 | 21000.0000 | 5000.0000 | 132,078 KB |
-|    ExpressionTreeAsync | 100000 | 630.228 ms | 11.8150 ms | 12.6419 ms | 631.758 ms |  0.99 |    0.02 | 21000.0000 | 5000.0000 | 132,076 KB |
-|  ExpressionTreeOpAsync | 100000 | 601.579 ms |  9.6817 ms |  8.5825 ms | 599.061 ms |  0.95 |    0.02 | 12000.0000 | 3000.0000 |  74,280 KB |
-| ExpressionTreeOp2Async | 100000 | 531.662 ms |  9.9531 ms | 11.0629 ms | 531.445 ms |  0.84 |    0.02 | 12000.0000 | 3000.0000 |  74,256 KB |
+|                 Method |      N |       Mean |       Error |     StdDev | Ratio | RatioSD |      Gen 0 |     Gen 1 |  Allocated |
+|----------------------- |------- |-----------:|------------:|-----------:|------:|--------:|-----------:|----------:|-----------:|
+|        ReflectionAsync |   1000 |   4.382 ms |   1.5948 ms |  0.0874 ms |  1.00 |    0.00 |   320.3125 |   15.6250 |   1,323 KB |
+|    ExpressionTreeAsync |   1000 |   4.449 ms |   0.5913 ms |  0.0324 ms |  1.02 |    0.01 |   320.3125 |   15.6250 |   1,323 KB |
+|  ExpressionTreeOpAsync |   1000 |   4.304 ms |   0.7163 ms |  0.0393 ms |  0.98 |    0.02 |   187.5000 |    7.8125 |     773 KB |
+| ExpressionTreeOp2Async |   1000 |   3.560 ms |   0.4516 ms |  0.0248 ms |  0.81 |    0.01 |   187.5000 |    3.9063 |     770 KB |
+|                        |        |            |             |            |       |         |            |           |            |
+|        ReflectionAsync | 100000 | 659.245 ms |  90.3217 ms |  4.9508 ms |  1.00 |    0.00 | 21000.0000 | 5000.0000 | 132,074 KB |
+|    ExpressionTreeAsync | 100000 | 652.458 ms | 216.0968 ms | 11.8450 ms |  0.99 |    0.02 | 21000.0000 | 5000.0000 | 132,074 KB |
+|  ExpressionTreeOpAsync | 100000 | 609.833 ms |  85.2152 ms |  4.6709 ms |  0.93 |    0.01 | 12000.0000 | 3000.0000 |  74,406 KB |
+| ExpressionTreeOp2Async | 100000 | 522.271 ms |  34.8645 ms |  1.9110 ms |  0.79 |    0.01 | 12000.0000 | 3000.0000 |  74,251 KB |
 
