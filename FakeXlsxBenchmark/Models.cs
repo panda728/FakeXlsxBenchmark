@@ -34,6 +34,7 @@ namespace FakeXlsxBenchmark
         public Bogus.DataSets.Name.Gender Gender { get; set; }
 
         public List<Order> Orders { get; set; }
+        public double Value { get; set; }
     }
 #pragma warning restore CS8618 // null 非許容のフィールドには、コンストラクターの終了時に null 以外の値が入っていなければなりません。Null 許容として宣言することをご検討ください。
 }
