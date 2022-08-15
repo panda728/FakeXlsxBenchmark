@@ -98,8 +98,8 @@ namespace FakeExcel
                 var fields = typeof(T).GetFields();
                 Writers = props.Cast<MemberInfo>().Concat(fields)
                     .AsParallel()
-                    .Select((p, i) => new CellWriterHelper<T>(p, i))
-                    .OrderBy(p => p.Index)
+                    .Select((m, i) => new CellWriterHelper<T>(m, i))
+                    .OrderBy(w => w.Index)
                     .ToArray();
             }
             public static readonly CellWriterHelper<T>[] Writers;
@@ -115,18 +115,16 @@ namespace FakeExcel
         )
         {
             var workPathRoot = Path.Combine(workPath, Guid.NewGuid().ToString());
+            if (!Directory.Exists(workPathRoot))
+                Directory.CreateDirectory(workPathRoot);
             try
             {
-                if (!Directory.Exists(workPathRoot))
-                    Directory.CreateDirectory(workPathRoot);
-
                 using (var sheetStream = CreateStream(Path.Combine(workPathRoot, "sheet.xml")))
                 using (var stringsStream = CreateStream(Path.Combine(workPathRoot, "strings.xml")))
                 {
-                    CellWriter.SharedStringsClear();
-                    CreateSheet(rows, sheetStream, showTitleRow, columnAutoFit, titles ?? Array.Empty<string>());
-                    WriteSharedStrings(stringsStream);
-                    CellWriter.SharedStringsClear();
+                    var cellWriter = new CellWriter();
+                    CreateSheet(rows, sheetStream, cellWriter, showTitleRow, columnAutoFit, titles ?? Array.Empty<string>());
+                    WriteSharedStrings(stringsStream, cellWriter);
                 }
 
                 var workRelPath = Path.Combine(workPathRoot, "_rels");
@@ -174,6 +172,7 @@ namespace FakeExcel
         void CreateSheet<T>(
             IEnumerable<T> rows,
             Stream stream,
+            CellWriter cellWriter,
             bool showTitleRow,
             bool autoFitColumns,
             string[] titles
@@ -186,7 +185,7 @@ namespace FakeExcel
 
             var writers = WriterCache<T>.Writers.AsSpan();
             if (autoFitColumns)
-                WriteCellWidth(writers, rows, stream);
+                WriteCellWidth(writers, rows, stream, cellWriter);
 
             stream.Write(_dataStart);
 
@@ -198,7 +197,7 @@ namespace FakeExcel
                 buffer.Write(_rowStart);
                 foreach (var f in writers)
                 {
-                    CellWriter.Write(
+                    cellWriter.Write(
                         titles.Length > f.Index ? titles[f.Index] : f.Name,
                         ref writer
                     );
@@ -214,7 +213,7 @@ namespace FakeExcel
                 if (row == null) continue;
                 buffer.Write(_rowStart);
                 foreach (var f in writers)
-                    f.Writer(row, ref writer);
+                    f.Write(ref writer, row,  cellWriter);
                 buffer.Write(_rowEnd);
 
                 stream.Write(buffer.WrittenSpan);
@@ -230,7 +229,8 @@ namespace FakeExcel
         void WriteCellWidth<T>(
             Span<CellWriterHelper<T>> writers,
             IEnumerable<T> rows,
-            Stream stream
+            Stream stream,
+            CellWriter cellWriter
         )
         {
             var i = 0;
@@ -246,7 +246,7 @@ namespace FakeExcel
                     .Take(100)
                     .Select(r =>
                     {
-                        var len = f?.Writer(r, ref writer) ?? 0;
+                        var len = f?.Write(ref writer, r,  cellWriter) ?? 0;
                         buffer.Clear();
                         return len;
                     })
@@ -263,12 +263,12 @@ namespace FakeExcel
             stream.Write(_colEnd);
         }
 
-        void WriteSharedStrings(Stream stream)
+        void WriteSharedStrings(Stream stream, CellWriter cellWriter)
         {
             stream.Write(_sstStart);
 
             using var buffer = new ArrayPoolBufferWriter<byte>();
-            foreach (var s in CellWriter.SharedStrings.Keys)
+            foreach (var s in cellWriter.SharedStrings.Keys)
             {
                 stream.Write(_siStart);
 
