@@ -28,7 +28,7 @@ namespace FakeExcel
                 FieldInfo fi => fi.Name,
                 _ => throw new InvalidOperationException()
             };
-            Writer = FormatterHelperExtention.GenerateWriter<T>(typeof(T), memberType, Name);
+            Writer = FormatterHelperExtention.CompiledWriter<T>(typeof(T), memberType, Name);
         }
         public int Index { get; init; }
         public string Name { get; set; }
@@ -49,8 +49,10 @@ namespace FakeExcel
         readonly static MethodInfo _methodObject = _methods.Where(x => x.type == typeof(object)).First().method;
         readonly static ParameterExpression _writer = Expression.Parameter(typeof(IBufferWriter<byte>).MakeByRefType(), "w");
 
-        public static SerializeDelegate<T> GenerateWriter<T>(Type declaringType, Type propertyType, string name)
+        public static SerializeDelegate<T> CompiledWriter<T>(Type declaringType, Type propertyType, string name)
         {
+            // (i, ref w) => Write(i.Id, ref w)
+            // (i, ref w) => Write((object)i.Id, ref w)
             if (declaringType == null || propertyType.IsGenericType)
                 return (T value, ref IBufferWriter<byte> writer) => CellWriter.WriteEmpty(ref writer);
 
