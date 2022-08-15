@@ -17,15 +17,15 @@ namespace FakeExcel
         static readonly byte[] _colStartString = Encoding.UTF8.GetBytes(@$"<c t=""s""><v>");
         static readonly byte[] _colEnd = Encoding.UTF8.GetBytes(@"</v></c>");
 
-        public static int WriteEmpty(IBufferWriter<byte> writer)
+        public static int WriteEmpty(ref IBufferWriter<byte> writer)
         {
             writer.Write(_emptyColumn);
             return 0;
         }
 
-        public static int Write(string value, IBufferWriter<byte> writer)
+        public static int Write(in string value, ref IBufferWriter<byte> writer)
         {
-            if (string.IsNullOrEmpty(value)) WriteEmpty(writer);
+            if (string.IsNullOrEmpty(value)) WriteEmpty(ref writer);
 
             writer.Write(
                 value.Contains(Environment.NewLine)
@@ -51,18 +51,18 @@ namespace FakeExcel
             SharedStrings.Clear();
         }
 
-        public static int Write(object? value, IBufferWriter<byte> writer)
-            => Write(value?.ToString() ?? "", writer);
-        public static int Write(Guid value, IBufferWriter<byte> writer)
-            => Write(value.ToString(), writer);
-        public static int Write(Enum value, IBufferWriter<byte> writer)
-            => Write(value.ToString(), writer);
+        public static int Write(object? value, ref IBufferWriter<byte> writer)
+            => Write(value?.ToString() ?? "", ref writer);
+        public static int Write(Guid value, ref IBufferWriter<byte> writer)
+            => Write(value.ToString(), ref writer);
+        public static int Write(Enum value, ref IBufferWriter<byte> writer)
+            => Write(value.ToString(), ref writer);
 
-        public static int Write(bool? value, IBufferWriter<byte> writer)
+        public static int Write(bool? value, ref IBufferWriter<byte> writer)
         {
-            if (value == null) return WriteEmpty(writer);
+            if (value == null) return WriteEmpty(ref writer);
             var s = Convert.ToString(value);
-            if (s == null) return WriteEmpty(writer);
+            if (s == null) return WriteEmpty(ref writer);
 
             writer.Write(_colStartBoolean);
             _ = Encoding.UTF8.GetBytes(s, writer);
@@ -70,7 +70,7 @@ namespace FakeExcel
             return s.Length;
         }
 
-        static int WriterNumber(ReadOnlySpan<char> chars, IBufferWriter<byte> writer)
+        static int WriterNumber(in ReadOnlySpan<char> chars, ref IBufferWriter<byte> writer)
         {
             writer.Write(_colStartNumber);
             _ = Encoding.UTF8.GetBytes(chars, writer);
@@ -78,27 +78,27 @@ namespace FakeExcel
             return chars.Length;
         }
 
-        public static int Write(int value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
-        public static int Write(long value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
-        public static int Write(float value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
-        public static int Write(double value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
-        public static int Write(decimal value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
-        public static int Write(short value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
-        public static int Write(ushort value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
+        public static int Write(int value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
+        public static int Write(long value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
+        public static int Write(float value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
+        public static int Write(double value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
+        public static int Write(decimal value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
+        public static int Write(short value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
+        public static int Write(ushort value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
 
         const int LEN_DATE = 10;
         const int LEN_DATETIME = 18;
-        public static int Write(DateTime value, IBufferWriter<byte> writer)
+        public static int Write(DateTime value, ref IBufferWriter<byte> writer)
         {
             var d = value;
-            if (d == DateTime.MinValue) WriteEmpty(writer);
+            if (d == DateTime.MinValue) WriteEmpty(ref writer);
             if (d.Hour == 0 && d.Minute == 0 && d.Second == 0)
             {
                 Encoding.UTF8.GetBytes(@$"<c t=""d"" s=""{XF_DATE}""><v>{d:yyyy-MM-ddTHH:mm:ss}</v></c>", writer);
@@ -108,16 +108,16 @@ namespace FakeExcel
             return LEN_DATETIME;
         }
 
-        public static int Write(DateOnly? value, IBufferWriter<byte> writer)
+        public static int Write(DateOnly? value, ref IBufferWriter<byte> writer)
         {
-            if (value == null) WriteEmpty(writer);
+            if (value == null) WriteEmpty(ref writer);
             Encoding.UTF8.GetBytes(@$"<c t=""d"" s=""{XF_DATE}""><v>{value:yyyy-MM-ddTHH:mm:ss}</v></c>", writer);
             return LEN_DATE;
         }
 
-        public static int Write(TimeOnly? value, IBufferWriter<byte> writer)
+        public static int Write(TimeOnly? value, ref IBufferWriter<byte> writer)
         {
-            if (value == null) WriteEmpty(writer);
+            if (value == null) WriteEmpty(ref writer);
             Encoding.UTF8.GetBytes(@$"<c t=""d"" s=""{XF_DATETIME}""><v>{value:yyyy-MM-ddTHH:mm:ss}</v></c>", writer);
             return LEN_DATETIME;
         }

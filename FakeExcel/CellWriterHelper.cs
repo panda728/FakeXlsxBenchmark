@@ -9,90 +9,60 @@ namespace FakeExcel
         public CellWriterHelper(string name)
         {
             Name = name;
-            Writer = (i, w) => CellWriter.Write(i, w);
+            Writer = (T value, ref IBufferWriter<byte> writer) => CellWriter.Write(value, ref writer);
             Index = 0;
         }
 
-        public CellWriterHelper(PropertyInfo p, int i)
+        public CellWriterHelper(MemberInfo member, int i)
         {
-            Name = p.Name;
-            Writer = p.GenerateWriter<T>();
             Index = i;
+            var memberType = member switch
+            {
+                PropertyInfo pi => pi.PropertyType,
+                FieldInfo fi => fi.FieldType,
+                _ => throw new InvalidOperationException()
+            };
+            Name = member switch
+            {
+                PropertyInfo pi => pi.Name,
+                FieldInfo fi => fi.Name,
+                _ => throw new InvalidOperationException()
+            };
+            Writer = FormatterHelperExtention.GenerateWriter<T>(typeof(T), memberType, Name);
         }
-
         public int Index { get; init; }
         public string Name { get; set; }
-        public Func<T, IBufferWriter<byte>, int> Writer { get; init; }
+        public SerializeDelegate<T> Writer { get; init; }
     }
 
+    public delegate int SerializeDelegate<T>(T value, ref IBufferWriter<byte> writer);
     public static class FormatterHelperExtention
     {
         readonly static Type _objectType = typeof(object);
-        readonly static Type _bufferWriter = typeof(IBufferWriter<byte>);
-        readonly static ParameterExpression _writerParam = Expression.Parameter(_bufferWriter, "w");
-        readonly static MethodInfo? _methodObject = typeof(CellWriter).GetMethod("Write", new Type[] { _objectType, _bufferWriter });
+        readonly static (MethodInfo method, Type? type)[] _methods =
+            typeof(CellWriter)
+                .GetMethods()
+                .Where(m => m.Name == "Write")
+                .Select(m => (m, m.GetParameters()?.FirstOrDefault()?.ParameterType))
+                .ToArray();
 
-        public static Func<T, IBufferWriter<byte>, int> GenerateWriter<T>(this PropertyInfo p)
+        readonly static MethodInfo _methodObject = _methods.Where(x => x.type == typeof(object)).First().method;
+        readonly static ParameterExpression _writer = Expression.Parameter(typeof(IBufferWriter<byte>).MakeByRefType(), "w");
+
+        public static SerializeDelegate<T> GenerateWriter<T>(Type declaringType, Type propertyType, string name)
         {
-            if (p.PropertyType.IsGenericType || p.DeclaringType == null)
-                return (o, v) => CellWriter.WriteEmpty(v);
+            if (declaringType == null || propertyType.IsGenericType)
+                return (T value, ref IBufferWriter<byte> writer) => CellWriter.WriteEmpty(ref writer);
 
-            return IsSupported(p.PropertyType)
-                ? GenerateSupportedWriter<T>(p.PropertyType, p.DeclaringType, p.Name)
-                : GenerateObjectWriter<T>(p.DeclaringType, p.Name);
-        }
-
-        static bool IsSupported(Type type)
-        {
-            if (type.IsPrimitive)
-                return true;
-
-            return type == typeof(string)
-                || type == typeof(Guid)
-                || type == typeof(Enum)
-                || type == typeof(DateTime)
-                || type == typeof(DateOnly)
-                || type == typeof(TimeOnly)
-                || type == typeof(object);
-        }
-
-        static Func<T, IBufferWriter<byte>, int> GenerateSupportedWriter<T>(
-            Type propertyType,
-            Type declaringType,
-            string name
-        )
-        {
-            var method = typeof(CellWriter).GetMethod("Write", new Type[] { propertyType, _bufferWriter });
-            if (method == null)
-                return (o, v) => CellWriter.WriteEmpty(v);
-
-            // Func<T, int, IBufferWriter<byte>> getCategoryId = (i,writer) => Formatter.Write(i.CategoryId, writer);
+            var methodTyped = _methods.Where(x => x.type == propertyType)?.Select(x => x.method)?.FirstOrDefault();
             var target = Expression.Parameter(declaringType, "i");
-            var property = Expression.PropertyOrField(target, name);
-            var ps = new Expression[] { property, _writerParam };
+            var parameters = methodTyped == null
+                ? new Expression[] { Expression.Convert(Expression.PropertyOrField(target, name), _objectType), _writer }
+                : new Expression[] { Expression.PropertyOrField(target, name), _writer };
 
-            var call = Expression.Call(method, ps);
-            var lambda = Expression.Lambda(call, target, _writerParam);
-            return (Func<T, IBufferWriter<byte>, int>)lambda.Compile();
-        }
-
-        static Func<T, IBufferWriter<byte>, int> GenerateObjectWriter<T>(
-            Type declaringType,
-            string name
-        )
-        {
-            if (_methodObject == null)
-                return (o, v) => CellWriter.WriteEmpty(v);
-
-            // Func<T, int, IBufferWriter<byte>> getCategoryId = (i,writer) => Formatter.Write((object)(i.CategoryId), writer);
-            var target = Expression.Parameter(declaringType, "i");
-            var property = Expression.PropertyOrField(target, name);
-            var propertyConv = Expression.Convert(property, _objectType);
-
-            var ps = new Expression[] { propertyConv, _writerParam };
-            var call = Expression.Call(_methodObject, ps);
-            var lambda = Expression.Lambda(call, target, _writerParam);
-            return (Func<T, IBufferWriter<byte>, int>)lambda.Compile();
+            var call = Expression.Call(methodTyped ?? _methodObject, parameters);
+            var lambda = Expression.Lambda<SerializeDelegate<T>>(call, target, _writer);
+            return lambda.Compile();
         }
     }
 }
