@@ -172,36 +172,33 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             var i = 0;
             fsSheet.Write(_colStart);
 
-            using var writer = new ArrayPoolBufferWriter<byte>();
+            using var buffer = new ArrayPoolBufferWriter<byte>();
+            var writer = (IBufferWriter<byte>)buffer;
+
             foreach (var f in formatters)
             {
-                var maxLength = GetMaxLength(f, rows, writer);
+                var max = rows
+                    .Take(100)
+                    .Select(r =>
+                    {
+                        var len = f?.Formatter(r, ref writer) ?? 0;
+                        buffer.Clear();
+                        return len;
+                    })
+                    .Max(x => x);
+
+                var lenMax = (int)Math.Max(max, f.Name.Length) + COLUMN_WIDTH_MARGIN;
+                var maxLength = Math.Min(lenMax, COLUMN_WIDTH_MAX);
                 ++i;
                 Encoding.UTF8.GetBytes(
                     @$"<col min=""{i}"" max =""{i}"" width =""{maxLength:0.0}"" bestFit =""1"" customWidth =""1"" />",
-                    writer);
-                fsSheet.Write(writer.WrittenSpan);
-                writer.Clear();
+                    buffer);
+                fsSheet.Write(buffer.WrittenSpan);
+                buffer.Clear();
                 fsSheet.Write(_newLine);
             }
             fsSheet.Write(_colEnd);
             fsSheet.Write(_newLine);
-        }
-
-        private int GetMaxLength<T>(FormatterHelper<T> f, IEnumerable<T> rows, ArrayPoolBufferWriter<byte> writer)
-        {
-            var max = rows
-                .Take(100)
-                .Select(r =>
-                {
-                    var len = f?.Formatter(r, writer) ?? 0;
-                    writer.Clear();
-                    return len;
-                })
-                .Max(x => x);
-
-            var lenMax = (int)Math.Max(max, f.Name.Length) + COLUMN_WIDTH_MARGIN;
-            return Math.Min(lenMax, COLUMN_WIDTH_MAX);
         }
 
         public void CreateSheet<T>(IEnumerable<T> rows, Stream fsSheet, bool showTitleRow, bool autoFitColumns)
@@ -222,15 +219,16 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             fsSheet.Write(_dataStart);
             fsSheet.Write(_newLine);
 
-            using var writer = new ArrayPoolBufferWriter<byte>();
+            using var buffer = new ArrayPoolBufferWriter<byte>();
+            var writer = (IBufferWriter<byte>)buffer;
             if (showTitleRow)
             {
                 fsSheet.Write(_rowStart);
                 foreach (var f in formatters)
                 {
-                    Formatter.Serialize(f.Name, writer);
-                    fsSheet.Write(writer.WrittenSpan);
-                    writer.Clear();
+                    Formatter.Serialize(f.Name, ref writer);
+                    fsSheet.Write(buffer.WrittenSpan);
+                    buffer.Clear();
                 }
                 fsSheet.Write(_rowEnd);
                 fsSheet.Write(_newLine);
@@ -242,10 +240,10 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
                 fsSheet.Write(_rowStart);
                 foreach (var f in formatters)
                 {
-                    f.Formatter(row, writer);
+                    f.Formatter(row, ref writer);
                 }
-                fsSheet.Write(writer.WrittenSpan);
-                writer.Clear();
+                fsSheet.Write(buffer.WrittenSpan);
+                buffer.Clear();
                 fsSheet.Write(_rowEnd);
                 fsSheet.Write(_newLine);
             }
@@ -260,12 +258,12 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             stream.Write(_sstStart);
             stream.Write(_newLine);
 
-            using var writer = new ArrayBufferWriter();
+            using var buffer = new ArrayBufferWriter();
             foreach (var s in Formatter.SharedStrings.Keys)
             {
                 stream.Write(_siStart);
-                Encoding.UTF8.GetBytes(s, writer);
-                writer.CopyTo(stream);
+                Encoding.UTF8.GetBytes(s, buffer);
+                buffer.CopyTo(stream);
                 stream.Write(_siEnd);
                 stream.Write(_newLine);
             }

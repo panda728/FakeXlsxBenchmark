@@ -18,7 +18,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
         static readonly byte[] _colEnd = Encoding.UTF8.GetBytes(@"</v></c>");
 
         static int _index = 0;
- 
+
         public static Dictionary<string, int> SharedStrings { get; } = new();
 
         public static void SharedStringsClear()
@@ -27,15 +27,15 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             SharedStrings.Clear();
         }
 
-        public static long WriteEmpty(IBufferWriter<byte> writer)
+        public static long WriteEmpty(ref IBufferWriter<byte> writer)
         {
             writer.Write(_emptyColumn);
             return 0;
         }
 
-        public static long Serialize(string value, IBufferWriter<byte> writer)
+        public static long Serialize(in string value, ref IBufferWriter<byte> writer)
         {
-            if (string.IsNullOrEmpty(value)) WriteEmpty(writer);
+            if (string.IsNullOrEmpty(value)) WriteEmpty(ref writer);
 
             if (value.Contains(Environment.NewLine))
                 writer.Write(_colStartStringWrap);
@@ -52,18 +52,18 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             return value.Length;
         }
 
-        public static long Serialize(object value, IBufferWriter<byte> writer)
-            => Serialize(value?.ToString() ?? "", writer);
-        public static long Serialize(Guid value, IBufferWriter<byte> writer)
-            => Serialize(value.ToString(), writer);
-        public static long Serialize(Enum value, IBufferWriter<byte> writer)
-            => Serialize(value.ToString(), writer);
+        public static long Serialize(object value, ref IBufferWriter<byte> writer)
+            => Serialize(value?.ToString() ?? "", ref writer);
+        public static long Serialize(Guid value, ref IBufferWriter<byte> writer)
+            => Serialize(value.ToString(), ref writer);
+        public static long Serialize(Enum value, ref IBufferWriter<byte> writer)
+            => Serialize(value.ToString(), ref writer);
 
-        public static long Serialize(bool? value, IBufferWriter<byte> writer)
+        public static long Serialize(bool? value, ref IBufferWriter<byte> writer)
         {
-            if (value == null) return WriteEmpty(writer);
+            if (value == null) return WriteEmpty(ref writer);
             var s = Convert.ToString(value);
-            if (s == null) return WriteEmpty(writer);
+            if (s == null) return WriteEmpty(ref writer);
 
             writer.Write(_colStartBoolean);
             _ = Encoding.UTF8.GetBytes(s, writer);
@@ -71,7 +71,7 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             return s.Length;
         }
 
-        static long WriterNumber(ReadOnlySpan<char> chars, IBufferWriter<byte> writer)
+        static long WriterNumber(in ReadOnlySpan<char> chars, ref IBufferWriter<byte> writer)
         {
             writer.Write(_colStartNumber);
             _ = Encoding.UTF8.GetBytes(chars, writer);
@@ -79,23 +79,23 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             return chars.Length;
         }
 
-        public static long Serialize(int value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
-        public static long Serialize(long value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
-        public static long Serialize(float value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
-        public static long Serialize(double value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
-        public static long Serialize(decimal value, IBufferWriter<byte> writer)
-            => WriterNumber(Convert.ToString(value), writer);
+        public static long Serialize(int value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
+        public static long Serialize(long value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
+        public static long Serialize(float value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
+        public static long Serialize(double value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
+        public static long Serialize(decimal value, ref IBufferWriter<byte> writer)
+            => WriterNumber(Convert.ToString(value), ref writer);
 
         const int LEN_DATE = 10;
         const int LEN_DATETIME = 18;
-        public static long Serialize(DateTime value, IBufferWriter<byte> writer)
+        public static long Serialize(DateTime value, ref IBufferWriter<byte> writer)
         {
             var d = value;
-            if (d == DateTime.MinValue) WriteEmpty(writer);
+            if (d == DateTime.MinValue) WriteEmpty(ref writer);
             if (d.Hour == 0 && d.Minute == 0 && d.Second == 0)
             {
                 Encoding.UTF8.GetBytes(@$"<c t=""d"" s=""{XF_DATE}""><v>{d:yyyy-MM-ddTHH:mm:ss}</v></c>", writer);
@@ -105,16 +105,16 @@ namespace FakeExcelBuilder.ExpressionTreeOp2
             return LEN_DATETIME;
         }
 
-        public static long Serialize(DateOnly? value, IBufferWriter<byte> writer)
+        public static long Serialize(DateOnly? value, ref IBufferWriter<byte> writer)
         {
-            if (value == null) WriteEmpty(writer);
+            if (value == null) WriteEmpty(ref writer);
             Encoding.UTF8.GetBytes(@$"<c t=""d"" s=""{XF_DATE}""><v>{value:yyyy-MM-ddTHH:mm:ss}</v></c>", writer);
             return LEN_DATE;
         }
 
-        public static long Serialize(TimeOnly? value, IBufferWriter<byte> writer)
+        public static long Serialize(TimeOnly? value, ref IBufferWriter<byte> writer)
         {
-            if (value == null) WriteEmpty(writer);
+            if (value == null) WriteEmpty(ref writer);
             Encoding.UTF8.GetBytes(@$"<c t=""d"" s=""{XF_DATETIME}""><v>{value:yyyy-MM-ddTHH:mm:ss}</v></c>", writer);
             return LEN_DATETIME;
         }
