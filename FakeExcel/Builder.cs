@@ -83,26 +83,26 @@ namespace FakeExcel
         const int COLUMN_WIDTH_MAX = 100;
         const int COLUMN_WIDTH_MARGIN = 2;
 
-        static class GetWriterCache<T>
+        static class WriterCache<T>
         {
-            static GetWriterCache()
+            static WriterCache()
             {
                 var type = typeof(T);
                 var name = type.FullName?.Split(".")?.FirstOrDefault() ?? "";
                 if (name == "System")
                 {
-                    Properties = new CellWriterHelper<T>[] { new CellWriterHelper<T>("value") };
+                    Writers = new CellWriterHelper<T>[] { new CellWriterHelper<T>("value") };
                     return;
                 }
                 var props = typeof(T).GetProperties();
                 var fields = typeof(T).GetFields();
-                Properties = props.Cast<MemberInfo>().Concat(fields)
+                Writers = props.Cast<MemberInfo>().Concat(fields)
                     .AsParallel()
                     .Select((p, i) => new CellWriterHelper<T>(p, i))
                     .OrderBy(p => p.Index)
                     .ToArray();
             }
-            public static readonly CellWriterHelper<T>[] Properties;
+            public static readonly CellWriterHelper<T>[] Writers;
         }
 
         public void CreateExcelFile<T>(
@@ -184,9 +184,9 @@ namespace FakeExcel
             if (showTitleRow)
                 stream.Write(_frozenTitleRow);
 
-            var formatters = GetWriterCache<T>.Properties.AsSpan();
+            var writers = WriterCache<T>.Writers.AsSpan();
             if (autoFitColumns)
-                WriteCellWidth(formatters, rows, stream);
+                WriteCellWidth(writers, rows, stream);
 
             stream.Write(_dataStart);
 
@@ -196,7 +196,7 @@ namespace FakeExcel
             if (showTitleRow)
             {
                 buffer.Write(_rowStart);
-                foreach (var f in formatters)
+                foreach (var f in writers)
                 {
                     CellWriter.Write(
                         titles.Length > f.Index ? titles[f.Index] : f.Name,
@@ -213,7 +213,7 @@ namespace FakeExcel
             {
                 if (row == null) continue;
                 buffer.Write(_rowStart);
-                foreach (var f in formatters)
+                foreach (var f in writers)
                     f.Writer(row, ref writer);
                 buffer.Write(_rowEnd);
 
@@ -228,7 +228,7 @@ namespace FakeExcel
         }
 
         void WriteCellWidth<T>(
-            Span<CellWriterHelper<T>> formatters,
+            Span<CellWriterHelper<T>> writers,
             IEnumerable<T> rows,
             Stream stream
         )
@@ -239,7 +239,7 @@ namespace FakeExcel
             using var buffer = new ArrayPoolBufferWriter<byte>();
             var writer = (IBufferWriter<byte>)buffer;
 
-            foreach (var f in formatters)
+            foreach (var f in writers)
             {
                 ++i;
                 var max = rows
